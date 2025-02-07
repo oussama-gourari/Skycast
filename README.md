@@ -16,6 +16,6 @@ Using a text editor, open `config.py` file and fill-in the credentials and detai
    - `BSKY_USERNAME` and `BSKY_PASSWORD`: Bluesky account username and password.
 
 ## License
-Skycast is provided under the [MIT License](https://github.com/oussama-gourari/Hs-Cards/blob/main/LICENSE).
+Skycast is provided under the [MIT License](https://github.com/oussama-gourari/Skycast/blob/main/LICENSE).
 
 - Copyright ©, 2025, Oussama Gourari.
