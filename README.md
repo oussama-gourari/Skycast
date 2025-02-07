@@ -11,7 +11,7 @@ A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/
    - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 4.
    - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Reddit bot's account username and password.
    - `BSKY_USERNAME` and `BSKY_PASSWORD`: Bluesky account username and password.
-6. To run the bot, execute 'Run.bat'.
+6. To run the bot, execute `Run.bat`.
 
 ## License
 Skycast is provided under the [MIT License](https://github.com/oussama-gourari/Skycast/blob/main/LICENSE).
