@@ -1,4 +1,4 @@
-A [Reddit](https://www.reddit.com/) bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/PodcastSharing) to [Bluesky](https://bsky.app/profile/shareapod.bsky.social).
+A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/PodcastSharing) to [Bluesky](https://bsky.app/profile/shareapod.bsky.social).
 
 ## Setup
 1. Download and install the latest version of [Python](https://www.python.org/).
