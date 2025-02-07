@@ -8,7 +8,7 @@ A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/
 5. Using a text editor, open `config.py` file and fill-in the credentials and details as follows (don't forget to save):
    - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting the bot.
    - `SUBREDDIT`: Subreddit name (without the prefix r/) where the bot will operate.
-   - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 4 of the setup process.
+   - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 4.
    - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Reddit bot's account username and password.
    - `BSKY_USERNAME` and `BSKY_PASSWORD`: Bluesky account username and password.
 6. To run the bot, execute 'Run.bat'.
