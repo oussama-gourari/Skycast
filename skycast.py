@@ -5,7 +5,7 @@ A Reddit bot that shares posts from r/PodcastSharing to Bluesky.
 Author: Oussama Gourari
 Copyright: Copyright (c) 2025 Oussama Gourari. All rights reserved.
 License: MIT License.
-Github: https://github.com/oussama-gourari/
+Github: https://github.com/oussama-gourari/Skycast
 """
 import logging
 import time
