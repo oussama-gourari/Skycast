@@ -8,6 +8,7 @@ License: MIT License.
 Github: https://github.com/oussama-gourari/Skycast
 """
 import logging
+import re
 import time
 from http import HTTPStatus
 from io import BytesIO
@@ -328,7 +329,9 @@ def main() -> None:
         catchup = recent[:max(0, CATCHUP_LIMIT)]
         update_status("Waiting for new posts")
         for new_post in subreddit.stream.submissions():
-            if new_post.saved or (new_post in recent and new_post not in catchup):
+            is_not_podcast_post = re.search(r"^\[.+?\]", new_post.title) is None
+            ignore_post = new_post in recent and new_post not in catchup
+            if is_not_podcast_post or new_post.saved or ignore_post:
                 continue
             submission_url = reddit_full_url(new_post.permalink)
             log.info("Processing post: %s", submission_url)
