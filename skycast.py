@@ -57,14 +57,14 @@ BSKY_EXTRACT_URL = "https://cardyb.bsky.app/v1/extract?url={url}"
 MAX_IMAGE_SIZE = 976560  # Bytes.
 THUMBNAIL_RESOLUTION = (500, 500)
 BSKY_POST_MAX_TEXT_LENGTH = 300
-REQUESTS_EXCEPTIONS = (
-    requests.exceptions.ConnectionError,
-    requests.exceptions.Timeout,
-)
-ATPROTO_EXCEPTIONS = (
-    atproto.exceptions.NetworkError,
-    atproto.exceptions.InvokeTimeoutError,
-)
+REQUESTS_EXCEPTIONS = {
+    requests.exceptions.ConnectionError: "Network connection is unavailable",
+    requests.exceptions.Timeout: "Network timeout occurred",
+}
+ATPROTO_EXCEPTIONS = {
+    atproto.exceptions.NetworkError: "Network connection is unavailable",
+    atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
+}
 PRAWCORE_EXCEPTIONS = (
     BadJSON,
     RequestException,
@@ -135,11 +135,9 @@ def patched_session_request(*args, **kwargs) -> Any:
                 original_exception = exception.original_exception
                 original_exception_name = original_exception.__class__.__name__
                 log_msg += f"{original_exception_name}: {original_exception}"
-                if isinstance(original_exception, requests.exceptions.ConnectionError):
-                    error = "Network connection is unavailable"
-                elif isinstance(original_exception, requests.exceptions.Timeout):
-                    error = "Network timeout occurred"
-                else:
+                try:
+                    error = REQUESTS_EXCEPTIONS[original_exception.__class__]
+                except KeyError:
                     error = "Unexpected network error"
                     retry = False
             else:
@@ -150,10 +148,33 @@ def patched_session_request(*args, **kwargs) -> Any:
                 error += ", retrying"
             console_log(error, is_error=True)
             is_connection_exception = isinstance(
-                original_exception, REQUESTS_EXCEPTIONS
+                original_exception, tuple(REQUESTS_EXCEPTIONS)
             )
             if original_exception and not is_connection_exception:
                 raise
+
+
+def exception_handler(exception, expected: dict) -> None:
+    """Handle a network exception."""
+    exception_desc = expected[exception.__class__]
+    console_log(
+        exception_desc + f", retrying after {SLEEP_BEFORE_RETRY_ON_ERROR} seconds",
+        is_error=True,
+    )
+    time.sleep(SLEEP_BEFORE_RETRY_ON_ERROR)
+
+
+def get(url: str) -> requests.Response:
+    """Make an HTTP GET request to `url` and return the response."""
+    while True:
+        try:
+            response = requests.get(url, timeout=REQUESTS_TIMEOUT)
+            log.info("HTTP %s: GET %s", response.status_code, url)
+            return response
+        except tuple(REQUESTS_EXCEPTIONS) as exception:  # pylint: disable=catching-non-exception
+            exception_name = exception.__class__.__name__
+            log.error("%s: %s <- GET %s", exception_name, exception, url)
+            exception_handler(exception, REQUESTS_EXCEPTIONS)
 
 
 def retry_atproto_request(function: Callable, *args, **kwargs) -> Any:
@@ -163,18 +184,10 @@ def retry_atproto_request(function: Callable, *args, **kwargs) -> Any:
     while True:
         try:
             return function(*args, **kwargs)
-        except ATPROTO_EXCEPTIONS as exception:
+        except tuple(ATPROTO_EXCEPTIONS) as exception:  # pylint: disable=catching-non-exception
             exception_name = exception.__class__.__name__
             log.error("%s: %s", exception_name, exception)
-            if isinstance(exception, atproto.exceptions.NetworkError):
-                error = "Network connection is unavailable"
-            else:  # atproto.exceptions.InvokeTimeoutError
-                error = "Network timeout occurred"
-            console_log(
-                error + f", retrying after {SLEEP_BEFORE_RETRY_ON_ERROR} seconds",
-                is_error=True,
-            )
-            time.sleep(SLEEP_BEFORE_RETRY_ON_ERROR)
+            exception_handler(exception, ATPROTO_EXCEPTIONS)
 
 
 def prepare_logger() -> None:
@@ -193,6 +206,22 @@ def prepare_logger() -> None:
     log.setLevel(LOG_LEVEL)
 
 
+def update_status(msg: str) -> None:
+    """Update the rich `live` with the new `msg`."""
+    live.update(
+        f">> {msg} ..."
+        "\n[italic grey50]To stop the bot properly, press Control+C[none]",
+        refresh=True,
+    )
+
+
+def console_log(msg: str, is_error=False) -> None:
+    """Log `msg` above the current status."""
+    t = time.strftime("%m/%d %H:%M:%S")
+    style = "[red]" if is_error else "[none]"
+    live.console.print(f"[{t}] {style}{msg}[none]")
+
+
 def reddit_full_url(permalink: str) -> str:
     """Full Reddit URL from a permalink."""
     return f"https://www.reddit.com{permalink}"
@@ -201,27 +230,6 @@ def reddit_full_url(permalink: str) -> str:
 def reddit_short_url(submission: Submission) -> str:
     """Short URL for a Reddit submission."""
     return f"https://redd.it/{submission.id}"
-
-
-def get(url: str) -> requests.Response:
-    """Make an HTTP GET request to `url` and return the response."""
-    while True:
-        try:
-            response = requests.get(url, timeout=REQUESTS_TIMEOUT)
-            log.info("HTTP %s: GET %s", response.status_code, url)
-            return response
-        except REQUESTS_EXCEPTIONS as exception:
-            exception_name = exception.__class__.__name__
-            log.error("%s: %s <- GET %s", exception_name, exception, url)
-            if isinstance(exception, requests.exceptions.ConnectionError):
-                error = "Network connection is unavailable"
-            else:  # requests.exceptions.Timeout
-                error = "Network timeout occurred"
-            console_log(
-                f"{error}, retrying after {SLEEP_BEFORE_RETRY_ON_ERROR} seconds",
-                is_error=True,
-            )
-            time.sleep(SLEEP_BEFORE_RETRY_ON_ERROR)
 
 
 def extract_info(submission_url: str) -> tuple:
@@ -237,33 +245,33 @@ def extract_info(submission_url: str) -> tuple:
     # not implemented here as the quota is should be very sufficient in
     # this use case.
     extract_data = get(extract_url).json()
-    if "Error" not in extract_data and extract_data["image"]:
-        blob = get_blob(extract_data["image"])
-        return (
-            blob,
-            extract_data["title"],
-            extract_data["description"],
-            extract_data["url"],
-        )
-    return None, final_url, "", final_url
+    if "Error" in extract_data or not extract_data["image"]:
+        return None, final_url, "", final_url
+    blob = get_blob(extract_data["image"])
+    return (
+        blob,
+        extract_data["title"],
+        extract_data["description"],
+        extract_data["url"],
+    )
 
 
 def get_blob(image_url: str) -> BlobRef | None:
     """Upload an image from `image_url` to create a `Blobref`."""
     thumb_image_request = get(image_url)
-    if thumb_image_request.status_code == HTTPStatus.OK:
-        image_data = thumb_image_request.content
-        image_size = len(image_data)
-        log.debug("Thumbnail image size: %s", image_size)
-        if image_size > MAX_IMAGE_SIZE:
-            image = Image.open(BytesIO(image_data))
-            image.thumbnail(THUMBNAIL_RESOLUTION)
-            with BytesIO() as f:
-                image.save(f, format=image.format, optimize=True)
-                image_data = f.getvalue()
-            log.debug("Reduced thumbnail image size: %s", len(image_data))
-        return retry_atproto_request(bsky_client.upload_blob, image_data).blob
-    return None
+    if thumb_image_request.status_code != HTTPStatus.OK:
+        return None
+    image_data = thumb_image_request.content
+    image_size = len(image_data)
+    log.debug("Thumbnail image size: %s", image_size)
+    if image_size > MAX_IMAGE_SIZE:
+        image = Image.open(BytesIO(image_data))
+        image.thumbnail(THUMBNAIL_RESOLUTION)
+        with BytesIO() as f:
+            image.save(f, format=image.format, optimize=True)
+            image_data = f.getvalue()
+        log.debug("Reduced thumbnail image size: %s", len(image_data))
+    return retry_atproto_request(bsky_client.upload_blob, image_data).blob
 
 
 def build_post_text(submission_title: str) -> client_utils.TextBuilder:
@@ -309,22 +317,6 @@ def process_submission(submission: Submission) -> str:
         handle=bsky_client.me.handle,
         post_id=bsky_post_id,
     )
-
-
-def update_status(msg: str) -> None:
-    """Update the rich `live` with the new `msg`."""
-    live.update(
-        f">> {msg} ..."
-        "\n[italic grey50]To stop the bot properly, press Control+C[none]",
-        refresh=True,
-    )
-
-
-def console_log(msg: str, is_error=False) -> None:
-    """Log `msg` above the current status."""
-    t = time.strftime("%m/%d %H:%M:%S")
-    style = "[red]" if is_error else "[none]"
-    live.console.print(f"[{t}] {style}{msg}[none]")
 
 
 def main() -> None:
