@@ -94,8 +94,8 @@ subreddit = reddit.subreddit(SUBREDDIT)
 # image data is large and if the network upload speed is slow, the
 # request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`
 # The `atproto.Client` uses `httpx.Client` for requests and the timeout
-# value is 5 seconds by default and is not exposed, so we to create our
-# own `httpx.Client` intance with the desired timeout value and pass it
+# value is 5 seconds by default and is not exposed, so we have to
+# create an `httpx.Client` intance with the desired timeout and pass it
 # to `atproto.Client`.
 request = Request()
 request._client = httpx.Client(  # pylint: disable=protected-access
