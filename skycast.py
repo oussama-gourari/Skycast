@@ -23,7 +23,6 @@ from atproto_client.models.app.bsky.embed.external import External, Main  # type
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.request import Request  # type: ignore
 from PIL import Image
-from rich.live import Live
 from praw.models import Submission  # type: ignore
 from prawcore.exceptions import (  # type: ignore
     BadJSON,
@@ -32,6 +31,7 @@ from prawcore.exceptions import (  # type: ignore
     TooManyRequests,
 )
 from prawcore.sessions import Session  # type: ignore
+from rich.live import Live
 
 from config import (
     BOT_HOSTER,
@@ -93,7 +93,7 @@ subreddit = reddit.subreddit(SUBREDDIT)
 # When uploading a blob (thumbnail image in this case), sometimes the
 # image data is large and if the network upload speed is slow, the
 # request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`
-# The `atproto.Client` uses `https.Client` for requests and the timeout
+# The `atproto.Client` uses `httpx.Client` for requests and the timeout
 # value is 5 seconds by default and is not exposed, so we to create our
 # own `httpx.Client` intance with the desired timeout value and pass it
 # to `atproto.Client`.
