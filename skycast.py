@@ -360,16 +360,7 @@ def main() -> None:
     live.stop()
 
 
-# def delete_posts():
-#     for submission in reddit.user.me().saved(limit=None):
-#         submission.unsave()
-#     feed_view_posts = bsky_client.get_author_feed(bsky_client.me.handle).feed
-#     for feed_view_post in feed_view_posts:
-#         bsky_client.delete_post(feed_view_post.post.uri)
-
-
 if __name__ == "__main__":
     Session.request = patched_session_request
     prepare_logger()
     main()
-    # delete_posts()
