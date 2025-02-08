@@ -95,7 +95,7 @@ subreddit = reddit.subreddit(SUBREDDIT)
 # request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`
 # The `atproto.Client` uses `httpx.Client` for requests and the timeout
 # value is 5 seconds by default and is not exposed, so we have to
-# create an `httpx.Client` intance with the desired timeout and pass it
+# create an `httpx.Client` instance with the desired timeout and pass it
 # to `atproto.Client`.
 request = Request()
 request._client = httpx.Client(  # pylint: disable=protected-access
