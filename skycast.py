@@ -61,7 +61,7 @@ REQUESTS_EXCEPTIONS = (
     requests.exceptions.ConnectionError,
     requests.exceptions.Timeout,
 )
-ATPROTO_EXCEPTION = (
+ATPROTO_EXCEPTIONS = (
     atproto.exceptions.NetworkError,
     atproto.exceptions.InvokeTimeoutError,
 )
@@ -163,7 +163,7 @@ def retry_atproto_request(function: Callable, *args, **kwargs) -> Any:
     while True:
         try:
             return function(*args, **kwargs)
-        except ATPROTO_EXCEPTION as exception:
+        except ATPROTO_EXCEPTIONS as exception:
             exception_name = exception.__class__.__name__
             log.error("%s: %s", exception_name, exception)
             if isinstance(exception, atproto.exceptions.NetworkError):
