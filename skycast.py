@@ -313,7 +313,11 @@ def process_submission(submission: Submission) -> str:
 
 def update_status(msg: str) -> None:
     """Update the rich `live` with the new `msg`."""
-    live.update(f">> {msg} ...", refresh=True)
+    live.update(
+        f">> {msg} ..."
+        "\n[italic grey50]To stop the bot properly, press Control+C[none]",
+        refresh=True,
+    )
 
 
 def console_log(msg: str, is_error=False) -> None:
@@ -325,7 +329,7 @@ def console_log(msg: str, is_error=False) -> None:
 
 def main() -> None:
     """Main entry function for the bot."""
-    live.console.rule("Skycast")
+    live.console.rule("[deep_sky_blue3]Skycast", style="deep_sky_blue3")
     live.start()
     try:
         recent = list(subreddit.new(limit=100))
