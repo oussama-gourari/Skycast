@@ -158,7 +158,7 @@ def patched_session_request(*args, **kwargs) -> Any:
 
 def retry_atproto_request(function: Callable, *args, **kwargs) -> Any:
     """Retry an atproto `function` that makes an HTTP call in case of
-    `ATPROTO_EXCEPTION`.
+    `ATPROTO_EXCEPTIONS`.
     """
     while True:
         try:
