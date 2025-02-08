@@ -12,9 +12,10 @@ import time
 from http import HTTPStatus
 from io import BytesIO
 from platform import platform, python_version
-from typing import Any
+from typing import Any, Callable
 
-import httpx
+import atproto.exceptions # type: ignore
+import httpx  # type: ignore
 import praw  # type: ignore
 import requests  # type: ignore
 from atproto import Client, client_utils  # type: ignore
@@ -22,6 +23,7 @@ from atproto_client.models.app.bsky.embed.external import External, Main  # type
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.request import Request  # type: ignore
 from PIL import Image
+from rich.live import Live
 from praw.models import Submission  # type: ignore
 from prawcore.exceptions import (  # type: ignore
     BadJSON,
@@ -33,10 +35,12 @@ from prawcore.sessions import Session  # type: ignore
 
 from config import (
     BOT_HOSTER,
+    BSKY_HANDLE,
     BSKY_PASSWORD,
-    BSKY_USERNAME,
+    CATCHUP_LIMIT,
     CLIENT_ID,
     CLIENT_SECRET,
+    HASHTAGS,
     REDDIT_PASSWORD,
     REDDIT_USERNAME,
     SUBREDDIT,
@@ -48,12 +52,18 @@ REDDIT_USER_AGENT = (
     f"{platform(terse=True)};Python-{python_version()}:"
     f"New podcasts posts to Bluesky bot:v{BOT_VERSION} (by /u/{BOT_HOSTER})"
 )
-BSKY_POST_URL = "https://bsky.app/profile/bot-tests.bsky.social/post/{post_id}"
+BSKY_POST_URL = "https://bsky.app/profile/{handle}/post/{post_id}"
 BSKY_EXTRACT_URL = "https://cardyb.bsky.app/v1/extract?url={url}"
 MAX_IMAGE_SIZE = 976560  # Bytes.
+THUMBNAIL_RESOLUTION = (500, 500)
+BSKY_POST_MAX_TEXT_LENGTH = 300
 REQUESTS_EXCEPTIONS = (
     requests.exceptions.ConnectionError,
     requests.exceptions.Timeout,
+)
+ATPROTO_EXCEPTION = (
+    atproto.exceptions.NetworkError,
+    atproto.exceptions.InvokeTimeoutError,
 )
 PRAWCORE_EXCEPTIONS = (
     BadJSON,
@@ -61,15 +71,41 @@ PRAWCORE_EXCEPTIONS = (
     ServerError,
     TooManyRequests,
 )
+HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
+REQUESTS_TIMEOUT = 30  # Seconds.
+SLEEP_BEFORE_RETRY_ON_ERROR = 5  # Seconds.
+HASHTAGS_LENGTH = (
+    len(" ".join(HASHTAGS)) +
+    len(HASHTAGS)  # For the # sign before each hashtag.
+)
+LOG_LEVEL = "DEBUG"
+
 
 log = logging.getLogger("skycast")
+reddit = praw.Reddit(
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    username=REDDIT_USERNAME,
+    password=REDDIT_PASSWORD,
+    user_agent=REDDIT_USER_AGENT,
+)
+subreddit = reddit.subreddit(SUBREDDIT)
+# When uploading a blob (thumbnail image in this case), sometimes the
+# image data is large and if the network upload speed is slow, the
+# request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`
+# The `atproto.Client` uses `https.Client` for requests and the timeout
+# value is 5 seconds by default and is not exposed, so we to create our
+# own `httpx.Client` intance with the desired timeout value and pass it
+# to `atproto.Client`.
+request = Request()
+request._client = httpx.Client(  # pylint: disable=protected-access
+    follow_redirects=True,
+    timeout=HTTPX_CLIENT_TIMEOUT,
+)
+bsky_client = Client(request=request)
+bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
+live = Live("", auto_refresh=False, transient=True)
 original_session_request = Session.request
-
-
-def print_error(error: str) -> None:
-    """Prints an error with the time it occured."""
-    t = time.strftime("%m/%d %H:%M:%S")
-    print(f"[{t}] {error}")
 
 
 def patched_session_request(*args, **kwargs) -> Any:
@@ -94,14 +130,25 @@ def patched_session_request(*args, **kwargs) -> Any:
             exception_name = exception.__class__.__name__
             log_msg = f"prawcore.{exception_name}: "
             original_exception = None
+            retry = True
             if isinstance(exception, RequestException):
                 original_exception = exception.original_exception
                 original_exception_name = original_exception.__class__.__name__
                 log_msg += f"{original_exception_name}: {original_exception}"
+                if isinstance(original_exception, requests.exceptions.ConnectionError):
+                    error = "Network connection is unavailable"
+                elif isinstance(original_exception, requests.exceptions.Timeout):
+                    error = "Network timeout occurred"
+                else:
+                    error = "Unexpected network error"
+                    retry = False
             else:
                 log_msg += str(exception)
+                error = "Reddit server error"
             log.error(log_msg)
-            print_error(log_msg)
+            if retry:
+                error += ", retrying"
+            console_log(error, is_error=True)
             is_connection_exception = isinstance(
                 original_exception, REQUESTS_EXCEPTIONS
             )
@@ -109,26 +156,25 @@ def patched_session_request(*args, **kwargs) -> Any:
                 raise
 
 
-Session.request = patched_session_request
-reddit = praw.Reddit(
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    username=REDDIT_USERNAME,
-    password=REDDIT_PASSWORD,
-    user_agent=REDDIT_USER_AGENT,
-)
-subreddit = reddit.subreddit(SUBREDDIT)
-# When uploading a blob (thumbnail image in here), sometimes the image
-# data is large and if the network upload speed is slow, the request
-# will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`
-# since the default timeout value is 5 seconds.
-# The `atproto.Client` uses `https.Client` for requests and the timeout
-# is not exposed, so we to create our own `httpx.Client` intance with the
-# desired timeout value and pass it to `atproto.Client`.
-request = Request()
-request._client = httpx.Client(follow_redirects=True, timeout=60)
-bsky_client = Client(request=request)
-bsky_client.login(BSKY_USERNAME, BSKY_PASSWORD)
+def retry_atproto_request(function: Callable, *args, **kwargs) -> Any:
+    """Retry an atproto `function` that makes an HTTP call in case of
+    `ATPROTO_EXCEPTION`.
+    """
+    while True:
+        try:
+            return function(*args, **kwargs)
+        except ATPROTO_EXCEPTION as exception:
+            exception_name = exception.__class__.__name__
+            log.error("%s: %s", exception_name, exception)
+            if isinstance(exception, atproto.exceptions.NetworkError):
+                error = "Network connection is unavailable"
+            else:  # atproto.exceptions.InvokeTimeoutError
+                error = "Network timeout occurred"
+            console_log(
+                error + f", retrying after {SLEEP_BEFORE_RETRY_ON_ERROR} seconds",
+                is_error=True,
+            )
+            time.sleep(SLEEP_BEFORE_RETRY_ON_ERROR)
 
 
 def prepare_logger() -> None:
@@ -144,27 +190,38 @@ def prepare_logger() -> None:
     )
     handler.setFormatter(formatter)
     log.addHandler(handler)
-    log.setLevel("DEBUG")
+    log.setLevel(LOG_LEVEL)
 
 
-def reddit_url(permalink: str) -> str:
+def reddit_full_url(permalink: str) -> str:
     """Full Reddit URL from a permalink."""
     return f"https://www.reddit.com{permalink}"
+
+
+def reddit_short_url(submission: Submission) -> str:
+    """Short URL for a Reddit submission."""
+    return f"https://redd.it/{submission.id}"
 
 
 def get(url: str) -> requests.Response:
     """Make an HTTP GET request to `url` and return the response."""
     while True:
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, timeout=REQUESTS_TIMEOUT)
             log.info("HTTP %s: GET %s", response.status_code, url)
             return response
         except REQUESTS_EXCEPTIONS as exception:
             exception_name = exception.__class__.__name__
             log.error("%s: %s <- GET %s", exception_name, exception, url)
-            print_error(exception)
-            time.sleep(5)
-            continue
+            if isinstance(exception, requests.exceptions.ConnectionError):
+                error = "Network connection is unavailable"
+            else:  # requests.exceptions.Timeout
+                error = "Network timeout occurred"
+            console_log(
+                f"{error}, retrying after {SLEEP_BEFORE_RETRY_ON_ERROR} seconds",
+                is_error=True,
+            )
+            time.sleep(SLEEP_BEFORE_RETRY_ON_ERROR)
 
 
 def extract_info(submission_url: str) -> tuple:
@@ -173,7 +230,7 @@ def extract_info(submission_url: str) -> tuple:
     """
     final_url = submission_url
     if submission_url.startswith("/r/"):  # Crosspost
-        final_url = reddit_url(submission_url)
+        final_url = reddit_full_url(submission_url)
     extract_url = BSKY_EXTRACT_URL.format(url=final_url)
     # At the time of writting this, the `BSKY_EXTRACT_URL` has a rate
     # limit of 100 requests per 5 minutes, the rate limiting logic is
@@ -200,54 +257,115 @@ def get_blob(image_url: str) -> BlobRef | None:
         log.debug("Thumbnail image size: %s", image_size)
         if image_size > MAX_IMAGE_SIZE:
             image = Image.open(BytesIO(image_data))
-            image.thumbnail((500, 500))
+            image.thumbnail(THUMBNAIL_RESOLUTION)
             with BytesIO() as f:
                 image.save(f, format=image.format, optimize=True)
                 image_data = f.getvalue()
             log.debug("Reduced thumbnail image size: %s", len(image_data))
-        return bsky_client.upload_blob(image_data).blob
+        return retry_atproto_request(bsky_client.upload_blob, image_data).blob
     return None
+
+
+def build_post_text(submission_title: str) -> client_utils.TextBuilder:
+    """Build the text used in the Bluesky post from a `submission_title`."""
+    text_builder = client_utils.TextBuilder()
+    remaining_length = (
+        BSKY_POST_MAX_TEXT_LENGTH -
+        HASHTAGS_LENGTH -
+        # 2 is for the line returns added between the text and the hashtags.
+        (2 if HASHTAGS else 0)
+    )
+    if len(submission_title) > remaining_length:
+        title = submission_title[:remaining_length-3] + "..."
+    else:
+        title = submission_title
+    text_builder.text(title)
+    if HASHTAGS:
+        text_builder.text("\n\n")
+    for i, hashtag in enumerate(HASHTAGS):
+        text_builder.tag(f"#{hashtag}", hashtag)
+        if i != (len(HASHTAGS) - 1):
+            text_builder.text(" ")
+    return text_builder
 
 
 def process_submission(submission: Submission) -> str:
     """Process a Reddit post."""
-    blob, title, description, uri = extract_info(submission.url)
+    thumbnail, title, description, uri = extract_info(submission.url)
     external = External(
-        thumb=blob,
+        thumb=thumbnail,
         title=title,
         description=description,
         uri=uri,
     )
-    # text_builder = client_utils.TextBuilder()
-    bsky_post = bsky_client.post(
-        text=submission.title + "\n#ShareAPodcast",
+    text = build_post_text(submission.title)
+    bsky_post = retry_atproto_request(
+        bsky_client.post,
+        text,
         embed=Main(external=external),
     )
     bsky_post_id = bsky_post.uri.split("/")[-1]
-    return BSKY_POST_URL.format(post_id=bsky_post_id)
+    return BSKY_POST_URL.format(
+        handle=bsky_client.me.handle,
+        post_id=bsky_post_id,
+    )
+
+
+def update_status(msg: str) -> None:
+    """Update the rich `live` with the new `msg`."""
+    live.update(f">> {msg} ...", refresh=True)
+
+
+def console_log(msg: str, is_error=False) -> None:
+    """Log `msg` above the current status."""
+    t = time.strftime("%m/%d %H:%M:%S")
+    style = "[red]" if is_error else "[none]"
+    live.console.print(f"[{t}] {style}{msg}[none]")
 
 
 def main() -> None:
     """Main entry function for the bot."""
+    live.console.rule("Skycast")
+    live.start()
     try:
-        for new_post in subreddit.stream.submissions(skip_existing=True):
-            submission_url = reddit_url(new_post.permalink)
-            log.info("Processing new post: %s", submission_url)
+        recent = list(subreddit.new(limit=100))
+        catchup = recent[:max(0, CATCHUP_LIMIT)]
+        update_status("Waiting for new posts")
+        for new_post in subreddit.stream.submissions():
+            if new_post.saved or (new_post in recent and new_post not in catchup):
+                continue
+            submission_url = reddit_full_url(new_post.permalink)
+            log.info("Processing post: %s", submission_url)
+            short_url = reddit_short_url(new_post)
+            update_status(f"Processing post {short_url}")
             bsky_post_url = process_submission(new_post)
             log.info("Bluesky post: %s <- %s", bsky_post_url, submission_url)
+            console_log(f"{short_url} -> {bsky_post_url}")
             log.debug("Saving processed post")
             new_post.save()
+            update_status("Waiting for new posts")
     except KeyboardInterrupt:
         log.info("Keyboard interrupt")
-        print_error("Keyboard interrupted")
+        console_log("Keyboard interrupted")
     except Exception:  # pylint: disable=broad-except
         log.exception("Fatal exception:")
-        print_error(
-            "Something went wrong!, check the most-recent log file for "
-            "details"
+        console_log(
+            "Something went wrong!, check log file for details",
+            is_error=True,
         )
+    live.stop()
+
+
+# def delete_posts():
+#     for submission in reddit.user.me().saved(limit=None):
+#         submission.unsave()
+#     feed_view_posts = bsky_client.get_author_feed(bsky_client.me.handle).feed
+#     for feed_view_post in feed_view_posts:
+#         bsky_client.delete_post(feed_view_post.post.uri)
 
 
 if __name__ == "__main__":
+    Session.request = patched_session_request
     prepare_logger()
     main()
+    # delete_posts()
