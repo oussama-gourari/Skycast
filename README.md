@@ -7,8 +7,8 @@ A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/
 4. [Create a script app on Reddit](https://www.reddit.com/prefs/apps) bot's account, you will get a Reddit ***Client ID*** and ***Client Secret***. [*Example*](https://imgur.com/QNzBmkN)
 5. Using a text editor, open `config.py` file and fill-in the credentials and details as follows (don't forget to save):
    - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 4.
-   - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Reddit bot's account username and password.
-   - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account handle and password.
+   - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Username and password of bot's Reddit account.
+   - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account's handle and password.
    - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting the bot.
    - `SUBREDDIT`: Subreddit name (without the prefix r/) where the bot will operate.
    - `BSKY_POST_TEXT_TEMPLATE`: The template used to generate the text of each Bluesky post.
