@@ -11,7 +11,7 @@ A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/
    - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account handle and password.
    - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting the bot.
    - `SUBREDDIT`: Subreddit name (without the prefix r/) where the bot will operate.
-   - `BSKY_POST_TEXT_TEMPLATE`: The template used to generate each Bluesky post.
+   - `BSKY_POST_TEXT_TEMPLATE`: The template used to generate the text of each Bluesky post.
       - The variable `post`, followed by a period (`.`) and an attribute name, all enclosed in curly brackets (`{}`), can be used to include various details about the Reddit post being shared. For example, `{post.title}` will be replaced with the Reddit post's title, and `{post.link_flair_text}` will be replaced with the Reddit post’s flair.
       - To see the available attribute names, append `.json` to the end of any Reddit post URL (e.g., https://www.reddit.com/r/PodcastSharing/comments/1ij1ck2/the_s1e1_podcast_episode_200_the_office/.json).
    - `HASHTAGS`: List of hashtags to add at the bottom of each post on Bluesky, the `post` variable mentionned above can also be used here.
