@@ -14,7 +14,7 @@ A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/
    - `BSKY_POST_TEXT_TEMPLATE`: The template used to generate the text of each Bluesky post.
       - The variable `post`, followed by a period (`.`) and an attribute name, all enclosed in curly brackets (`{}`), can be used to include various details about the Reddit post being shared. For example, `{post.title}` will be replaced with the Reddit post's title, and `{post.link_flair_text}` will be replaced with the Reddit post’s flair.
       - To see the available attribute names, append `.json` to the end of any Reddit post URL (e.g., https://www.reddit.com/r/PodcastSharing/comments/1ij1ck2/the_s1e1_podcast_episode_200_the_office/.json).
-   - `HASHTAGS`: List of hashtags to add at the bottom of each post on Bluesky, the `post` variable mentionned above can also be used here.
+   - `HASHTAGS`: List of hashtags to add at the bottom of each post on Bluesky, the `post` variable mentioned above can also be used here.
    - `SEPARATOR`: Used to separate the text from the hashtags on the Bluesky post, it is set to 2 line breaks (`\n`).
    - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, the bot will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that the bot saves on his Reddit account the posts he already shared, this is to prevent sharing the same post again if the bot is restarted.
 6. Double-click `Run.bat` to run the bot.
