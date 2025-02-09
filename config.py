@@ -13,7 +13,9 @@ BSKY_PASSWORD = ""
 # Settings.
 BOT_HOSTER = ""
 SUBREDDIT = "PodcastSharing"
+BSKY_POST_TEXT_TEMPLATE = "({post.link_flair_text}) {post.title}"
 HASHTAGS = [
     "ShareAPodcast",
+    # "{post.link_flair_text}",
 ]
 CATCHUP_LIMIT = 0
