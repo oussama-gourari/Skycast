@@ -9,6 +9,7 @@ Github: https://github.com/oussama-gourari/Skycast
 """
 import logging
 import re
+import textwrap
 import time
 from http import HTTPStatus
 from io import BytesIO
@@ -38,6 +39,7 @@ from config import (
     BOT_HOSTER,
     BSKY_HANDLE,
     BSKY_PASSWORD,
+    BSKY_POST_TEXT_TEMPLATE,
     CATCHUP_LIMIT,
     CLIENT_ID,
     CLIENT_SECRET,
@@ -75,10 +77,6 @@ PRAWCORE_EXCEPTIONS = (
 HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
 REQUESTS_TIMEOUT = 30  # Seconds.
 SLEEP_BEFORE_RETRY_ON_ERROR = 5  # Seconds.
-HASHTAGS_LENGTH = (
-    len(" ".join(HASHTAGS)) +
-    len(HASHTAGS)  # For the # sign before each hashtag.
-)
 LOG_LEVEL = "DEBUG"
 
 
@@ -275,25 +273,28 @@ def get_blob(image_url: str) -> BlobRef | None:
     return retry_atproto_request(bsky_client.upload_blob, image_data).blob
 
 
-def build_post_text(submission_title: str) -> client_utils.TextBuilder:
-    """Build the text used in the Bluesky post from a `submission_title`."""
+def build_post_text(submission: Submission) -> client_utils.TextBuilder:
+    """Build the text used in the Bluesky post from a `submission`."""
     text_builder = client_utils.TextBuilder()
+    hashtags = [hashtag.format(post=submission) for hashtag in HASHTAGS]
+    hashtags_length = (
+        len(" ".join(hashtags)) +
+        len(hashtags)  # For the # sign before each hashtag.
+    )
     remaining_length = (
         BSKY_POST_MAX_TEXT_LENGTH -
-        HASHTAGS_LENGTH -
+        hashtags_length -
         # 2 is for the line returns added between the text and the hashtags.
-        (2 if HASHTAGS else 0)
+        (2 if hashtags else 0)
     )
-    if len(submission_title) > remaining_length:
-        title = submission_title[:remaining_length-3] + "..."
-    else:
-        title = submission_title
-    text_builder.text(title)
-    if HASHTAGS:
+    text = BSKY_POST_TEXT_TEMPLATE.format(post=submission)
+    text = textwrap.shorten(text, width=remaining_length)
+    text_builder.text(text)
+    if hashtags:
         text_builder.text("\n\n")
-    for i, hashtag in enumerate(HASHTAGS):
+    for i, hashtag in enumerate(hashtags):
         text_builder.tag(f"#{hashtag}", hashtag)
-        if i != (len(HASHTAGS) - 1):
+        if i != (len(hashtags) - 1):
             text_builder.text(" ")
     return text_builder
 
@@ -307,7 +308,7 @@ def process_submission(submission: Submission) -> str:
         description=description,
         uri=uri,
     )
-    text = build_post_text(submission.title)
+    text = build_post_text(submission)
     bsky_post = retry_atproto_request(
         bsky_client.post,
         text,
@@ -320,32 +321,61 @@ def process_submission(submission: Submission) -> str:
     )
 
 
+def verify_submission(
+    submission: Submission,
+    recent: list[Submission],
+) -> tuple[bool, str | None]:
+    """Verify if `submission` should be skipped or not."""
+    invalid_title = re.search(r"^\[.+?\]", submission.title) is None
+    catchup = recent[:max(0, CATCHUP_LIMIT)]
+    past_catchup = submission in recent and submission not in catchup
+    to_skip = True
+    reason = None
+    if past_catchup:
+        pass
+    elif invalid_title:
+        reason = "title doesn't conform to formatting rule"
+    elif submission.saved:
+        reason = "already shared"
+    else:
+        to_skip = False
+    if to_skip:
+        log.info(
+            "Skipping post: %s - invalid_title=%s - saved=%s - past_catchup=%s",
+            reddit_full_url(submission.permalink),
+            invalid_title,
+            submission.saved,
+            past_catchup,
+        )
+    return to_skip, reason
+
+
 def main() -> None:
     """Main entry function for the bot."""
     live.console.rule("[deep_sky_blue3]Skycast", style="deep_sky_blue3")
     live.start()
     try:
         recent = list(subreddit.new(limit=100))
-        catchup = recent[:max(0, CATCHUP_LIMIT)]
         update_status("Waiting for new posts")
         for new_post in subreddit.stream.submissions():
-            is_not_podcast_post = re.search(r"^\[.+?\]", new_post.title) is None
-            ignore_post = new_post in recent and new_post not in catchup
-            if is_not_podcast_post or new_post.saved or ignore_post:
-                continue
             submission_url = reddit_full_url(new_post.permalink)
-            log.info("Processing post: %s", submission_url)
             short_url = reddit_short_url(new_post)
+            to_skip, reason = verify_submission(new_post, recent)
+            if to_skip:
+                if reason:
+                    console_log(f"{short_url} -> Skipped ({reason})")
+                continue
+            log.info("Processing post: %s", submission_url)
             update_status(f"Processing post {short_url}")
             bsky_post_url = process_submission(new_post)
-            log.info("Bluesky post: %s <- %s", bsky_post_url, submission_url)
+            log.info("Bluesky post: %s", bsky_post_url)
             console_log(f"{short_url} -> {bsky_post_url}")
-            log.debug("Saving processed post")
+            log.info("Saving processed post")
             new_post.save()
             update_status("Waiting for new posts")
     except KeyboardInterrupt:
         log.info("Keyboard interrupt")
-        console_log("Keyboard interrupted")
+        console_log("Stopped by user")
     except Exception:  # pylint: disable=broad-except
         log.exception("Fatal exception:")
         console_log(
