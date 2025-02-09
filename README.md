@@ -2,7 +2,7 @@ A Reddit bot that shares posts from [r/PodcastSharing](https://www.reddit.com/r/
 
 ## Setup & Configuration
 1. Download and install the latest version of [Python](https://www.python.org/).
-2. Download bot's files and extract them to a folder and open it.
+2. [Download bot's files](https://github.com/oussama-gourari/Skycast/archive/refs/heads/main.zip) and extract them to a folder and open it.
 3. Run `Install Requirements.bat`, this will install the required Python packages for the bot.
 4. [Create a script app on Reddit](https://www.reddit.com/prefs/apps) bot's account, you will get a Reddit ***Client ID*** and ***Client Secret***. [*Example*](https://imgur.com/QNzBmkN)
 5. Using a text editor, open `config.py` file and fill-in the credentials and details as follows (don't forget to save):
