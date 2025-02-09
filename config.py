@@ -18,4 +18,5 @@ HASHTAGS = [
     "ShareAPodcast",
     # "{post.link_flair_text}",
 ]
+SEPARATOR = "\n\n"
 CATCHUP_LIMIT = 0
