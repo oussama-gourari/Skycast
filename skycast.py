@@ -46,6 +46,7 @@ from config import (
     HASHTAGS,
     REDDIT_PASSWORD,
     REDDIT_USERNAME,
+    SEPARATOR,
     SUBREDDIT,
 )
 
@@ -284,14 +285,13 @@ def build_post_text(submission: Submission) -> client_utils.TextBuilder:
     remaining_length = (
         BSKY_POST_MAX_TEXT_LENGTH -
         hashtags_length -
-        # 2 is for the line returns added between the text and the hashtags.
-        (2 if hashtags else 0)
+        (len(SEPARATOR) if hashtags else 0)
     )
     text = BSKY_POST_TEXT_TEMPLATE.format(post=submission)
     text = textwrap.shorten(text, width=remaining_length)
     text_builder.text(text)
     if hashtags:
-        text_builder.text("\n\n")
+        text_builder.text(SEPARATOR)
     for i, hashtag in enumerate(hashtags):
         text_builder.tag(f"#{hashtag}", hashtag)
         if i != (len(hashtags) - 1):
