@@ -242,7 +242,7 @@ def extract_info(submission_url: str) -> tuple:
     extract_url = BSKY_EXTRACT_URL.format(url=final_url)
     # At the time of writting this, the `BSKY_EXTRACT_URL` has a rate
     # limit of 100 requests per 5 minutes, the rate limiting logic is
-    # not implemented here as the quota is should be very sufficient in
+    # not implemented here as the quota should be very sufficient in
     # this use case.
     extract_data = get(extract_url).json()
     if "Error" in extract_data or not extract_data["image"]:
