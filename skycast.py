@@ -14,16 +14,16 @@ import time
 from http import HTTPStatus
 from io import BytesIO
 from platform import platform, python_version
-from typing import Any, Callable
 
 import atproto.exceptions # type: ignore
-import httpx  # type: ignore
+import httpx
 import praw  # type: ignore
 import requests  # type: ignore
 from atproto import Client, client_utils  # type: ignore
 from atproto_client.models.app.bsky.embed.external import External, Main  # type: ignore
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.request import Request  # type: ignore
+from humanize import precisedelta
 from PIL import Image
 from praw.models import Submission  # type: ignore
 from prawcore.exceptions import (  # type: ignore
@@ -34,6 +34,8 @@ from prawcore.exceptions import (  # type: ignore
 )
 from prawcore.sessions import Session  # type: ignore
 from rich.live import Live
+from tenacity import RetryCallState, retry
+from tenacity.wait import wait_exponential
 
 from config import (
     BOT_HOSTER,
@@ -51,7 +53,8 @@ from config import (
 )
 
 # Contants.
-BOT_VERSION = "0.1"
+BOT_VERSION = "0.2"
+TITLE_RULE = re.compile(r"^\[.+?\]")
 REDDIT_USER_AGENT = (
     f"{platform(terse=True)};Python-{python_version()}:"
     f"New podcasts posts to Bluesky bot:v{BOT_VERSION} (by /u/{BOT_HOSTER})"
@@ -61,23 +64,32 @@ BSKY_EXTRACT_URL = "https://cardyb.bsky.app/v1/extract?url={url}"
 MAX_IMAGE_SIZE = 976560  # Bytes.
 THUMBNAIL_RESOLUTION = (500, 500)
 BSKY_POST_MAX_TEXT_LENGTH = 300
-REQUESTS_EXCEPTIONS = {
-    requests.exceptions.ConnectionError: "Network connection is unavailable",
-    requests.exceptions.Timeout: "Network timeout occurred",
-}
-ATPROTO_EXCEPTIONS = {
-    atproto.exceptions.NetworkError: "Network connection is unavailable",
-    atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
-}
+REQUESTS_EXCEPTIONS = (
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+)
+ATPROTO_EXCEPTIONS = (
+    atproto.exceptions.NetworkError,
+    atproto.exceptions.InvokeTimeoutError,
+)
 PRAWCORE_EXCEPTIONS = (
     BadJSON,
     RequestException,
     ServerError,
     TooManyRequests,
 )
+RETRY_EXCEPTIONS = PRAWCORE_EXCEPTIONS + REQUESTS_EXCEPTIONS + ATPROTO_EXCEPTIONS
+EXCEPTIONS_DESCRIPTIONS = {
+    requests.exceptions.ConnectionError: "Network connection is unavailable",
+    requests.exceptions.Timeout: "Network timeout occurred",
+    atproto.exceptions.NetworkError: "Network connection is unavailable",
+    atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
+}
+
 HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
 REQUESTS_TIMEOUT = 30  # Seconds.
-SLEEP_BEFORE_RETRY_ON_ERROR = 5  # Seconds.
+SLEEP_BEFORE_RETRY_MULTIPLIER = 5
+MAX_SLEEP_BEFORE_RETRY = 300  # Seconds.
 LOG_LEVEL = "DEBUG"
 
 
@@ -92,7 +104,7 @@ reddit = praw.Reddit(
 subreddit = reddit.subreddit(SUBREDDIT)
 # When uploading a blob (thumbnail image in this case), sometimes the
 # image data is large and if the network upload speed is slow, the
-# request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`
+# request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`.
 # The `atproto.Client` uses `httpx.Client` for requests and the timeout
 # value is 5 seconds by default and is not exposed, so we have to
 # create an `httpx.Client` instance with the desired timeout and pass
@@ -105,89 +117,43 @@ request._client = httpx.Client(  # pylint: disable=protected-access
 bsky_client = Client(request=request)
 bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
 live = Live("", auto_refresh=False, transient=True)
-original_session_request = Session.request
 
 
-def patched_session_request(*args, **kwargs) -> Any:
-    """Patch `prawcore.sessions.Session.request` method, to allow
-    for catching `PRAWCORE_EXCEPTIONS` then retrying the request
-    before they propagate to `praw.models.util.stream_generator`,
-    which will prevent breaking the generator and allow us to resume it.
-
-    Args:
-        *args: Positional arguments passed to the original
-            `prawcore.sessions.Session.request` method.
-        **kwargs: Keyword arguments passed to the original
-            `prawcore.sessions.Session.request` method.
-
-    Returns:
-        Any: Return value from the original method.
+def should_retry_request(retry_state: RetryCallState) -> bool:
+    """Callback to decide whether to retry or not on a network
+    exception.
     """
-    while True:
-        try:
-            return original_session_request(*args, **kwargs)
-        except PRAWCORE_EXCEPTIONS as exception:
-            exception_name = exception.__class__.__name__
-            log_msg = f"prawcore.{exception_name}: "
-            original_exception = None
-            retry = True
-            if isinstance(exception, RequestException):
-                original_exception = exception.original_exception
-                original_exception_name = original_exception.__class__.__name__
-                log_msg += f"{original_exception_name}: {original_exception}"
-                try:
-                    error = REQUESTS_EXCEPTIONS[original_exception.__class__]
-                except KeyError:
-                    error = "Unexpected network error"
-                    retry = False
-            else:
-                log_msg += str(exception)
-                error = "Reddit server error"
-            log.error(log_msg)
-            if retry:
-                error += ", retrying"
-            console_log(error, is_error=True)
-            is_connection_exception = isinstance(
-                original_exception, tuple(REQUESTS_EXCEPTIONS)
-            )
-            if original_exception and not is_connection_exception:
-                raise
+    exception = retry_state.outcome.exception()  # type: ignore
+    if not exception and retry_state.attempt_number > 1:
+        console_log("[green]Successfully resumed")
+    return isinstance(exception, RETRY_EXCEPTIONS)
 
 
-def exception_handler(exception, expected: dict) -> None:
-    """Handle a network exception."""
-    exception_desc = expected[exception.__class__]
-    console_log(
-        exception_desc + f", retrying after {SLEEP_BEFORE_RETRY_ON_ERROR} seconds",
-        is_error=True,
-    )
-    time.sleep(SLEEP_BEFORE_RETRY_ON_ERROR)
+def on_network_exception(retry_state: RetryCallState) -> None:
+    """Callback on network exceptions before retrying the request."""
+    exception = retry_state.outcome.exception()  # type: ignore
+    exception_name = exception.__class__.__name__
+    log.error("%s: %s", exception_name, exception)
+    if isinstance(exception, RequestException):
+        original_exception = exception.original_exception
+        if not isinstance(original_exception, REQUESTS_EXCEPTIONS):
+            raise exception
+        exception_description = EXCEPTIONS_DESCRIPTIONS[original_exception.__class__]
+    else:
+        exception_description = EXCEPTIONS_DESCRIPTIONS.get(
+            exception.__class__, "Reddit server error"
+        )
+    sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
+    exception_description += f", retrying after {sleep_amount}"
+    console_log(exception_description, is_error=True)
 
 
-def get(url: str) -> requests.Response:
+def get_request(url: str) -> requests.Response:
     """Make an HTTP GET request to `url` and return the response."""
-    while True:
-        try:
-            response = requests.get(url, timeout=REQUESTS_TIMEOUT)
-            log.info("HTTP %s: GET %s", response.status_code, url)
-            return response
-        except tuple(REQUESTS_EXCEPTIONS) as exception:  # pylint: disable=catching-non-exception
-            exception_name = exception.__class__.__name__
-            log.error("%s: %s <- GET %s", exception_name, exception, url)
-            exception_handler(exception, REQUESTS_EXCEPTIONS)
-
-
-def retry_atproto_request(function: Callable, *args, **kwargs) -> Any:
-    """Retry an atproto `function` that makes an HTTP call in case of
-    `ATPROTO_EXCEPTIONS`.
-    """
-    while True:
-        try:
-            return function(*args, **kwargs)
-        except tuple(ATPROTO_EXCEPTIONS) as exception:  # pylint: disable=catching-non-exception
-            exception_name = exception.__class__.__name__
-            log.error("%s: %s", exception_name, exception)
-            exception_handler(exception, ATPROTO_EXCEPTIONS)
+    log.info("GET %s", url)
+    response = requests.get(url, timeout=REQUESTS_TIMEOUT)
+    log.info("HTTP %s: GET %s", response.status_code, url)
+    return response
 
 
 def prepare_logger() -> None:
@@ -244,7 +210,9 @@ def extract_info(submission_url: str) -> tuple:
     # limit of 100 requests per 5 minutes, the rate limiting logic is
     # not implemented here as the quota should be very sufficient in
     # this use case.
-    extract_data = get(extract_url).json()
+    # console_log("Will call get")
+    # time.sleep(5)
+    extract_data = get_request(extract_url).json()
     if "Error" in extract_data or not extract_data["image"]:
         return None, final_url, "", final_url
     blob = get_blob(extract_data["image"])
@@ -258,7 +226,7 @@ def extract_info(submission_url: str) -> tuple:
 
 def get_blob(image_url: str) -> BlobRef | None:
     """Upload an image from `image_url` to create a `Blobref`."""
-    thumb_image_request = get(image_url)
+    thumb_image_request = get_request(image_url)
     if thumb_image_request.status_code != HTTPStatus.OK:
         return None
     image_data = thumb_image_request.content
@@ -271,7 +239,7 @@ def get_blob(image_url: str) -> BlobRef | None:
             image.save(f, format=image.format, optimize=True)
             image_data = f.getvalue()
         log.debug("Reduced thumbnail image size: %s", len(image_data))
-    return retry_atproto_request(bsky_client.upload_blob, image_data).blob
+    return atproto_retry(bsky_client.upload_blob, image_data).blob
 
 
 def build_post_text(submission: Submission) -> client_utils.TextBuilder:
@@ -309,7 +277,7 @@ def process_submission(submission: Submission) -> str:
         uri=uri,
     )
     text = build_post_text(submission)
-    bsky_post = retry_atproto_request(
+    bsky_post = atproto_retry(
         bsky_client.post,
         text,
         embed=Main(external=external),
@@ -326,7 +294,7 @@ def verify_submission(
     recent: list[Submission],
 ) -> tuple[bool, str | None]:
     """Verify if `submission` should be skipped or not."""
-    invalid_title = re.search(r"^\[.+?\]", submission.title) is None
+    invalid_title = TITLE_RULE.search(submission.title) is None
     catchup = recent[:max(0, CATCHUP_LIMIT)]
     past_catchup = submission in recent and submission not in catchup
     to_skip = True
@@ -351,28 +319,34 @@ def verify_submission(
 
 
 def main() -> None:
-    """Main entry function for the bot."""
+    """Continuously fetch submissions and process them."""
+    recent = list(subreddit.new(limit=100))
+    update_status("Waiting for new posts")
+    for new_post in subreddit.stream.submissions():
+        submission_url = reddit_full_url(new_post.permalink)
+        short_url = reddit_short_url(new_post)
+        to_skip, reason = verify_submission(new_post, recent)
+        if to_skip:
+            if reason:
+                console_log(f"{short_url} -> Skipped ({reason})")
+            continue
+        log.info("Processing post: %s", submission_url)
+        update_status(f"Processing post {short_url}")
+        bsky_post_url = process_submission(new_post)
+        log.info("Bluesky post: %s", bsky_post_url)
+        console_log(f"{short_url} -> {bsky_post_url}")
+        log.info("Saving processed post")
+        new_post.save()
+        update_status("Waiting for new posts")
+
+
+def run() -> None:
+    """Entry function for the bot."""
+    prepare_logger()
     live.console.rule("[deep_sky_blue3]Skycast", style="deep_sky_blue3")
     live.start()
     try:
-        recent = list(subreddit.new(limit=100))
-        update_status("Waiting for new posts")
-        for new_post in subreddit.stream.submissions():
-            submission_url = reddit_full_url(new_post.permalink)
-            short_url = reddit_short_url(new_post)
-            to_skip, reason = verify_submission(new_post, recent)
-            if to_skip:
-                if reason:
-                    console_log(f"{short_url} -> Skipped ({reason})")
-                continue
-            log.info("Processing post: %s", submission_url)
-            update_status(f"Processing post {short_url}")
-            bsky_post_url = process_submission(new_post)
-            log.info("Bluesky post: %s", bsky_post_url)
-            console_log(f"{short_url} -> {bsky_post_url}")
-            log.info("Saving processed post")
-            new_post.save()
-            update_status("Waiting for new posts")
+        main()
     except KeyboardInterrupt:
         log.info("Keyboard interrupt")
         console_log("Stopped by user")
@@ -385,7 +359,18 @@ def main() -> None:
     live.stop()
 
 
+network_retry = retry(
+    retry=should_retry_request,
+    wait=wait_exponential(
+        multiplier=SLEEP_BEFORE_RETRY_MULTIPLIER,
+        max=MAX_SLEEP_BEFORE_RETRY,
+    ),
+    before_sleep=on_network_exception,
+)
+get_request = network_retry(get_request)
+atproto_retry = network_retry(lambda fn, *args, **kwargs: fn(*args, **kwargs))
+Session.request = network_retry(Session.request)
+
+
 if __name__ == "__main__":
-    Session.request = patched_session_request
-    prepare_logger()
-    main()
+    run()
