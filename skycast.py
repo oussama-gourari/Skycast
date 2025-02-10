@@ -52,7 +52,7 @@ from config import (
     SUBREDDIT,
 )
 
-# Contants.
+# Constants.
 BOT_VERSION = "0.2"
 TITLE_RULE = re.compile(r"^\[.+?\]")
 REDDIT_USER_AGENT = (
