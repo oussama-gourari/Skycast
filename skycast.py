@@ -210,8 +210,6 @@ def extract_info(submission_url: str) -> tuple:
     # limit of 100 requests per 5 minutes, the rate limiting logic is
     # not implemented here as the quota should be very sufficient in
     # this use case.
-    # console_log("Will call get")
-    # time.sleep(5)
     extract_data = get_request(extract_url).json()
     if "Error" in extract_data or not extract_data["image"]:
         return None, final_url, "", final_url
