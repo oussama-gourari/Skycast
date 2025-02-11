@@ -1,6 +1,6 @@
-"""Configuration variables. Check README.md for details."""
+"""Credentials and settings. Check README.md for details."""
 
-# Reddit credentials and details.
+# Reddit credentials.
 CLIENT_ID = ""
 CLIENT_SECRET = ""
 REDDIT_USERNAME = ""
