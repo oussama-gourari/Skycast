@@ -1,7 +1,7 @@
 A bot that shares podcast posts from [r/PodcastSharing](https://www.reddit.com/r/PodcastSharing) to [Bluesky](https://bsky.app/profile/shareapod.bsky.social).
 
 ## Setup & Configuration
-1. Download and install the latest version of [Python](https://www.python.org/).
+1. Download and install the latest version of [Python](https://www.python.org/). Make sure to check the box that says "Add Python X.X to PATH" (located at the bottom of the first installation screen).
 2. [Download bot's files](https://github.com/oussama-gourari/Skycast/archive/refs/heads/main.zip) and extract them to a folder and open it.
 3. Run `Install Requirements.bat`, this will install the required Python packages for the bot.
 4. [Create a script app on Reddit](https://www.reddit.com/prefs/apps) bot's account, you will get a Reddit ***Client ID*** and ***Client Secret***. [*Example*](https://imgur.com/QNzBmkN)
