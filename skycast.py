@@ -66,7 +66,8 @@ THUMBNAIL_RESOLUTION = (500, 500)
 BSKY_POST_MAX_TEXT_LENGTH = 300
 REQUESTS_EXCEPTIONS = (
     requests.exceptions.ConnectionError,
-    requests.exceptions.Timeout,
+    requests.exceptions.ConnectTimeout,
+    requests.exceptions.ReadTimeout,
 )
 ATPROTO_EXCEPTIONS = (
     atproto.exceptions.NetworkError,
@@ -81,7 +82,8 @@ PRAWCORE_EXCEPTIONS = (
 RETRY_EXCEPTIONS = PRAWCORE_EXCEPTIONS + REQUESTS_EXCEPTIONS + ATPROTO_EXCEPTIONS
 EXCEPTIONS_DESCRIPTIONS = {
     requests.exceptions.ConnectionError: "Network connection is unavailable",
-    requests.exceptions.Timeout: "Network timeout occurred",
+    requests.exceptions.ConnectTimeout: "Network timeout occurred",
+    requests.exceptions.ReadTimeout: "Network timeout occurred",
     atproto.exceptions.NetworkError: "Network connection is unavailable",
     atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
 }
@@ -117,6 +119,8 @@ request._client = httpx.Client(  # pylint: disable=protected-access
 bsky_client = Client(request=request)
 bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
 live = Live("", auto_refresh=False, transient=True)
+prev_status = ""
+prev_sub_status = ""
 
 
 def should_retry_request(retry_state: RetryCallState) -> bool:
@@ -146,6 +150,15 @@ def on_network_exception(retry_state: RetryCallState) -> None:
     sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
     exception_description += f", retrying after {sleep_amount}"
     console_log(exception_description, is_error=True)
+    while retry_state.upcoming_sleep > 0:
+        sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
+        update_status(
+            f"Sleeping for {sleep_amount} before attempting to resume",
+            cache=False,
+        )
+        time.sleep(min(1, retry_state.upcoming_sleep))
+        retry_state.upcoming_sleep -= 1
+    update_status(prev_status, prev_sub_status)
 
 
 def get_request(url: str) -> requests.Response:
@@ -172,8 +185,23 @@ def prepare_logger() -> None:
     log.setLevel(LOG_LEVEL)
 
 
-def update_status(msg: str) -> None:
-    """Update the rich `live` with the new `msg`."""
+def update_status(
+    status: str = "",
+    sub_status: str = "",
+    cache: bool = True,
+) -> None:
+    """Update the rich `live` with the new `status` and
+    'sub_status'.
+    """
+    global prev_status
+    global prev_sub_status
+    status = status or prev_status
+    if cache:
+        prev_status = status
+        prev_sub_status = sub_status
+    msg = status
+    if sub_status:
+        msg += f" : {sub_status}"
     live.update(
         f">> {msg} ..."
         "\n[italic grey50]To stop the bot properly, press Control+C[none]",
@@ -210,6 +238,7 @@ def extract_info(submission_url: str) -> tuple:
     # limit of 100 requests per 5 minutes, the rate limiting logic is
     # not implemented here as the quota should be very sufficient in
     # this use case.
+    update_status(sub_status="extracting metadata")
     extract_data = get_request(extract_url).json()
     if "Error" in extract_data or not extract_data["image"]:
         return None, final_url, "", final_url
@@ -224,6 +253,7 @@ def extract_info(submission_url: str) -> tuple:
 
 def get_blob(image_url: str) -> BlobRef | None:
     """Upload an image from `image_url` to create a `Blobref`."""
+    update_status(sub_status="downloading thumbnail")
     thumb_image_request = get_request(image_url)
     if thumb_image_request.status_code != HTTPStatus.OK:
         return None
@@ -231,12 +261,14 @@ def get_blob(image_url: str) -> BlobRef | None:
     image_size = len(image_data)
     log.debug("Thumbnail image size: %s", image_size)
     if image_size > MAX_IMAGE_SIZE:
+        update_status(sub_status="reducing thumbnail size")
         image = Image.open(BytesIO(image_data))
         image.thumbnail(THUMBNAIL_RESOLUTION)
         with BytesIO() as f:
             image.save(f, format=image.format, optimize=True)
             image_data = f.getvalue()
         log.debug("Reduced thumbnail image size: %s", len(image_data))
+    update_status(sub_status="uploading blob")
     return atproto_retry(bsky_client.upload_blob, image_data).blob
 
 
@@ -274,7 +306,9 @@ def process_submission(submission: Submission) -> str:
         description=description,
         uri=uri,
     )
+    update_status(sub_status="constructing post text")
     text = build_post_text(submission)
+    update_status(sub_status="posting to Bluesky")
     bsky_post = atproto_retry(
         bsky_client.post,
         text,
@@ -334,6 +368,7 @@ def main() -> None:
         log.info("Bluesky post: %s", bsky_post_url)
         console_log(f"{short_url} -> {bsky_post_url}")
         log.info("Saving processed post")
+        update_status(sub_status="saving post to Reddit")
         new_post.save()
         update_status("Waiting for new posts")
 
