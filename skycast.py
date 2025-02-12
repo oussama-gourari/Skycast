@@ -28,7 +28,12 @@ from PIL import Image
 from praw.models import Submission  # type: ignore
 from prawcore.exceptions import (  # type: ignore
     BadJSON,
+    Forbidden,
+    NotFound,
+    OAuthException,
+    Redirect,
     RequestException,
+    ResponseException,
     ServerError,
     TooManyRequests,
 )
@@ -52,18 +57,25 @@ from config import (
     SUBREDDIT,
 )
 
-# Constants.
 BOT_VERSION = "0.2"
+LOG_LEVEL = "DEBUG"
+# Only submissions which fullfil this regex are processed.
 TITLE_RULE = re.compile(r"^\[.+?\]")
+
+# Reddit constants.
 REDDIT_USER_AGENT = (
     f"{platform(terse=True)};Python-{python_version()}:"
     f"New podcasts posts to Bluesky bot:v{BOT_VERSION} (by /u/{BOT_HOSTER})"
 )
+
+# Bluesky constants.
 BSKY_POST_URL = "https://bsky.app/profile/{handle}/post/{post_id}"
 BSKY_EXTRACT_URL = "https://cardyb.bsky.app/v1/extract?url={url}"
+BSKY_POST_MAX_TEXT_LENGTH = 300
 MAX_IMAGE_SIZE = 976560  # Bytes.
 THUMBNAIL_RESOLUTION = (500, 500)
-BSKY_POST_MAX_TEXT_LENGTH = 300
+
+# HTTP Requests constants.
 REQUESTS_EXCEPTIONS = (
     requests.exceptions.ConnectionError,
     requests.exceptions.ConnectTimeout,
@@ -79,6 +91,13 @@ PRAWCORE_EXCEPTIONS = (
     ServerError,
     TooManyRequests,
 )
+OTHER_PRAWCORE_EXCEPTIONS = (
+    ResponseException,
+    OAuthException,
+    Redirect,
+    Forbidden,
+    NotFound,
+)
 RETRY_EXCEPTIONS = PRAWCORE_EXCEPTIONS + REQUESTS_EXCEPTIONS + ATPROTO_EXCEPTIONS
 EXCEPTIONS_DESCRIPTIONS = {
     requests.exceptions.ConnectionError: "Network connection is unavailable",
@@ -86,14 +105,16 @@ EXCEPTIONS_DESCRIPTIONS = {
     requests.exceptions.ReadTimeout: "Network timeout occurred",
     atproto.exceptions.NetworkError: "Network connection is unavailable",
     atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
+    ResponseException: "Reddit authentication error: wrong client ID and/or client secret",
+    OAuthException: "Reddit authentication error: wrong username and/or password",
+    Redirect: "The subreddit r/{subreddit} probably doesn't exist",
+    Forbidden: "The subreddit r/{subreddit} is probably set to private (only approved members can access it)",
+    NotFound: "The subreddit r/{subreddit} is probably banned",
 }
-
 HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
 REQUESTS_TIMEOUT = 30  # Seconds.
 SLEEP_BEFORE_RETRY_MULTIPLIER = 5
 MAX_SLEEP_BEFORE_RETRY = 300  # Seconds.
-LOG_LEVEL = "DEBUG"
-
 
 log = logging.getLogger("skycast")
 reddit = praw.Reddit(
@@ -117,7 +138,6 @@ request._client = httpx.Client(  # pylint: disable=protected-access
     timeout=HTTPX_CLIENT_TIMEOUT,
 )
 bsky_client = Client(request=request)
-bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
 live = Live("", auto_refresh=False, transient=True)
 prev_status = ""
 prev_sub_status = ""
@@ -224,6 +244,42 @@ def reddit_full_url(permalink: str) -> str:
 def reddit_short_url(submission: Submission) -> str:
     """Short URL for a Reddit submission."""
     return f"https://redd.it/{submission.id}"
+
+
+def bsky_login() -> bool:
+    """Login to Bluesky."""
+    log.debug("Logging in to Bluesky")
+    update_status("Logging in to Bluesky")
+    try:
+        return bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
+    except atproto.exceptions.UnauthorizedError as exception:
+        log.error(exception)
+        console_log(
+            f"Bluesky login error: {exception.response.content.message}",
+            is_error=True,
+        )
+        return False
+
+
+def recent_submissions() -> list[Submission] | None:
+    """Fetch 100 most-recent submissions on `SUBREDDIT` catching
+    errors that could be encountered as a first request to Reddit.
+    """
+    log.debug("Fetching recent submissions")
+    update_status("Fetching Reddit posts")
+    try:
+        return list(subreddit.new(limit=100))
+    except OTHER_PRAWCORE_EXCEPTIONS as exception:
+        log.error("%s: %s", exception.__class__.__name__, exception)
+        if (type(exception) == ResponseException
+                and exception.response.status_code != HTTPStatus.UNAUTHORIZED):
+            raise
+        exception_description = EXCEPTIONS_DESCRIPTIONS[exception.__class__]
+        console_log(
+            exception_description.format(subreddit=subreddit),
+            is_error=True,
+        )
+    return None
 
 
 def extract_info(submission_url: str) -> tuple:
@@ -350,10 +406,8 @@ def verify_submission(
     return to_skip, reason
 
 
-def main() -> None:
+def main(recent: list[Submission]) -> None:
     """Continuously fetch submissions and process them."""
-    recent = list(subreddit.new(limit=100))
-    update_status("Waiting for new posts")
     for new_post in subreddit.stream.submissions():
         submission_url = reddit_full_url(new_post.permalink)
         short_url = reddit_short_url(new_post)
@@ -379,7 +433,8 @@ def run() -> None:
     live.console.rule("[deep_sky_blue3]Skycast", style="deep_sky_blue3")
     live.start()
     try:
-        main()
+        if bsky_login() and (recent := recent_submissions()) is not None:
+            main(recent)
     except KeyboardInterrupt:
         log.info("Keyboard interrupt")
         console_log("Stopped by user")
@@ -390,6 +445,7 @@ def run() -> None:
             is_error=True,
         )
     live.stop()
+    console_log("Exiting")
 
 
 network_retry = retry(
