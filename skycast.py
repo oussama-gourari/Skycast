@@ -59,7 +59,7 @@ from config import (
 
 BOT_VERSION = "0.2"
 LOG_LEVEL = "DEBUG"
-# Only submissions which fullfil this regex are processed.
+# Only submissions which fulfill this regex are processed.
 TITLE_RULE = re.compile(r"^\[.+?\]")
 
 # Reddit constants.
