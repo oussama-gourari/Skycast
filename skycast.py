@@ -15,18 +15,21 @@ from http import HTTPStatus
 from io import BytesIO
 from platform import platform, python_version
 
-import atproto.exceptions # type: ignore
+import atproto.exceptions  # type: ignore[import-untyped]
 import httpx
-import praw  # type: ignore
-import requests  # type: ignore
-from atproto import Client, client_utils  # type: ignore
-from atproto_client.models.app.bsky.embed.external import External, Main  # type: ignore
-from atproto_client.models.blob_ref import BlobRef  # type: ignore
-from atproto_client.request import Request  # type: ignore
+import praw  # type: ignore[import-untyped]
+import requests  # type: ignore[import-untyped]
+from atproto import Client, client_utils  # type: ignore[import-untyped]
+from atproto_client.models.app.bsky.embed.external import (  # type: ignore[import-untyped]
+    External,
+    Main,
+)
+from atproto_client.models.blob_ref import BlobRef  # type: ignore[import-untyped]
+from atproto_client.request import Request  # type: ignore[import-untyped]
 from humanize import precisedelta
 from PIL import Image
-from praw.models import Submission  # type: ignore
-from prawcore.exceptions import (  # type: ignore
+from praw.models import Submission  # type: ignore[import-untyped]
+from prawcore.exceptions import (  # type: ignore[import-untyped]
     BadJSON,
     Forbidden,
     NotFound,
@@ -37,7 +40,7 @@ from prawcore.exceptions import (  # type: ignore
     ServerError,
     TooManyRequests,
 )
-from prawcore.sessions import Session  # type: ignore
+from prawcore.sessions import Session  # type: ignore[import-untyped]
 from rich.live import Live
 from tenacity import RetryCallState, retry
 from tenacity.wait import wait_exponential
@@ -105,10 +108,15 @@ EXCEPTIONS_DESCRIPTIONS = {
     requests.exceptions.ReadTimeout: "Network timeout occurred",
     atproto.exceptions.NetworkError: "Network connection is unavailable",
     atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
-    ResponseException: "Reddit authentication error: wrong client ID and/or client secret",
+    ResponseException: (
+        "Reddit authentication error: wrong client ID and/or client secret"
+    ),
     OAuthException: "Reddit authentication error: wrong username and/or password",
     Redirect: "The subreddit r/{subreddit} probably doesn't exist",
-    Forbidden: "The subreddit r/{subreddit} is probably set to private (only approved members can access it)",
+    Forbidden: (
+        "The subreddit r/{subreddit} is probably set to private "
+        "(only approved members can access it)"
+    ),
     NotFound: "The subreddit r/{subreddit} is probably banned",
 }
 HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
@@ -133,7 +141,7 @@ subreddit = reddit.subreddit(SUBREDDIT)
 # create an `httpx.Client` instance with the desired timeout and pass
 # it to `atproto.Client`.
 request = Request()
-request._client = httpx.Client(  # pylint: disable=protected-access
+request._client = httpx.Client(  # noqa: SLF001
     follow_redirects=True,
     timeout=HTTPX_CLIENT_TIMEOUT,
 )
@@ -144,18 +152,16 @@ prev_sub_status = ""
 
 
 def should_retry_request(retry_state: RetryCallState) -> bool:
-    """Callback to decide whether to retry or not on a network
-    exception.
-    """
-    exception = retry_state.outcome.exception()  # type: ignore
+    """Decide whether to retry or not on a network exception."""
+    exception = retry_state.outcome.exception()  # type: ignore[union-attr]
     if not exception and retry_state.attempt_number > 1:
         console_log("[green]Successfully resumed")
     return isinstance(exception, RETRY_EXCEPTIONS)
 
 
 def on_network_exception(retry_state: RetryCallState) -> None:
-    """Callback on network exceptions before retrying the request."""
-    exception = retry_state.outcome.exception()  # type: ignore
+    """Log and print network exceptions and sleep before retrying the request."""
+    exception = retry_state.outcome.exception()  # type: ignore[union-attr]
     exception_name = exception.__class__.__name__
     log.error("%s: %s", exception_name, exception)
     if isinstance(exception, RequestException):
@@ -165,7 +171,7 @@ def on_network_exception(retry_state: RetryCallState) -> None:
         exception_description = EXCEPTIONS_DESCRIPTIONS[original_exception.__class__]
     else:
         exception_description = EXCEPTIONS_DESCRIPTIONS.get(
-            exception.__class__, "Reddit server error"
+            exception.__class__, "Reddit server error",
         )
     sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
     exception_description += f", retrying after {sleep_amount}"
@@ -190,7 +196,7 @@ def get_request(url: str) -> requests.Response:
 
 
 def prepare_logger() -> None:
-    """Sets the handler, formatter, and level for `log`."""
+    """Set the handler, formatter, and level for `log`."""
     handler = logging.FileHandler(
         filename="log.log",
         mode="w",
@@ -208,13 +214,12 @@ def prepare_logger() -> None:
 def update_status(
     status: str = "",
     sub_status: str = "",
+    *,
     cache: bool = True,
 ) -> None:
-    """Update the rich `live` with the new `status` and
-    'sub_status'.
-    """
-    global prev_status
-    global prev_sub_status
+    """Update the rich `live` with the new `status` and 'sub_status'."""
+    global prev_status  # noqa: PLW0603
+    global prev_sub_status  # noqa: PLW0603
     status = status or prev_status
     if cache:
         prev_status = status
@@ -229,7 +234,7 @@ def update_status(
     )
 
 
-def console_log(msg: str, is_error=False) -> None:
+def console_log(msg: str, *, is_error: bool = False) -> None:
     """Log `msg` above the current status."""
     t = time.strftime("%m/%d %H:%M:%S")
     style = "[red]" if is_error else "[none]"
@@ -262,7 +267,9 @@ def bsky_login() -> bool:
 
 
 def recent_submissions() -> list[Submission] | None:
-    """Fetch 100 most-recent submissions on `SUBREDDIT` catching
+    """Fetch recent submissions.
+
+    Fetch 100 most-recent submissions on `SUBREDDIT` catching
     errors that could be encountered as a first request to Reddit.
     """
     log.debug("Fetching recent submissions")
@@ -271,7 +278,7 @@ def recent_submissions() -> list[Submission] | None:
         return list(subreddit.new(limit=100))
     except OTHER_PRAWCORE_EXCEPTIONS as exception:
         log.error("%s: %s", exception.__class__.__name__, exception)
-        if (type(exception) == ResponseException
+        if (exception is ResponseException
                 and exception.response.status_code != HTTPStatus.UNAUTHORIZED):
             raise
         exception_description = EXCEPTIONS_DESCRIPTIONS[exception.__class__]
@@ -283,9 +290,7 @@ def recent_submissions() -> list[Submission] | None:
 
 
 def extract_info(submission_url: str) -> tuple:
-    """Extract title, description, thumbnail image URL, and URI from
-    a given `url`.
-    """
+    """Extract title, description, thumbnail image URL, and URI from a given `url`."""
     final_url = submission_url
     if submission_url.startswith("/r/"):  # Crosspost
         final_url = reddit_full_url(submission_url)
