@@ -278,7 +278,7 @@ def recent_submissions() -> list[Submission] | None:
         return list(subreddit.new(limit=100))
     except OTHER_PRAWCORE_EXCEPTIONS as exception:
         log.error("%s: %s", exception.__class__.__name__, exception)
-        if (type(exception) is ResponseException
+        if (type(exception) == ResponseException
                 and exception.response.status_code != HTTPStatus.UNAUTHORIZED):
             raise
         exception_description = EXCEPTIONS_DESCRIPTIONS[exception.__class__]
