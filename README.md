@@ -10,7 +10,7 @@ Skycast is a bot that automatically shares podcast posts from [r/PodcastSharing]
 - Install the latest version of [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ### 2️⃣ Create a Reddit Script App
-- Go to [Reddit Apps](https://www.reddit.com/prefs/apps) and create a **script app** for the bot's account.
+- On the bot's Reddit account, go to [Reddit Apps](https://www.reddit.com/prefs/apps) and create a **script app**.
 - You will receive a **Client ID** and **Client Secret**.  
   📌 [Example](https://imgur.com/QNzBmkN)
 
