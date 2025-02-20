@@ -11,8 +11,10 @@ import logging
 import re
 import textwrap
 import time
+import tomllib
 from http import HTTPStatus
 from io import BytesIO
+from pathlib import Path
 from platform import platform, python_version
 
 import atproto.exceptions  # type: ignore[import-untyped]
@@ -60,16 +62,10 @@ from config import (
     SUBREDDIT,
 )
 
-BOT_VERSION = "0.2"
+# General constants.
 LOG_LEVEL = "DEBUG"
 # Only submissions which fulfill this regex are processed.
 TITLE_RULE = re.compile(r"^\[.+?\]")
-
-# Reddit constants.
-REDDIT_USER_AGENT = (
-    f"{platform(terse=True)};Python-{python_version()}:"
-    f"New podcasts posts to Bluesky bot:v{BOT_VERSION} (by /u/{BOT_HOSTER})"
-)
 
 # Bluesky constants.
 BSKY_POST_URL = "https://bsky.app/profile/{handle}/post/{post_id}"
@@ -79,6 +75,12 @@ MAX_IMAGE_SIZE = 976560  # Bytes.
 THUMBNAIL_RESOLUTION = (500, 500)
 
 # HTTP Requests constants.
+HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
+REQUESTS_TIMEOUT = 30  # Seconds.
+SLEEP_BEFORE_RETRY_MULTIPLIER = 5
+MAX_SLEEP_BEFORE_RETRY = 300  # Seconds.
+
+# Exceptions constants.
 REQUESTS_EXCEPTIONS = (
     requests.exceptions.ConnectionError,
     requests.exceptions.ConnectTimeout,
@@ -119,18 +121,22 @@ EXCEPTIONS_DESCRIPTIONS = {
     ),
     NotFound: "The subreddit r/{subreddit} is probably banned",
 }
-HTTPX_CLIENT_TIMEOUT = 60  # Seconds.
-REQUESTS_TIMEOUT = 30  # Seconds.
-SLEEP_BEFORE_RETRY_MULTIPLIER = 5
-MAX_SLEEP_BEFORE_RETRY = 300  # Seconds.
 
-log = logging.getLogger("skycast")
+# Global variables.
+with Path("pyproject.toml").open(mode="rb") as f:
+    pyproject = tomllib.load(f)
+    bot_name = pyproject["project"]["name"]
+    version = pyproject["project"]["version"]
+log = logging.getLogger(bot_name)
 reddit = praw.Reddit(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
     username=REDDIT_USERNAME,
     password=REDDIT_PASSWORD,
-    user_agent=REDDIT_USER_AGENT,
+    user_agent=(
+        f"{platform(terse=True)};Python-{python_version()}:"
+        f"{bot_name.title()} bot:v{version} (by /u/{BOT_HOSTER})"
+    ),
 )
 subreddit = reddit.subreddit(SUBREDDIT)
 # When uploading a blob (thumbnail image in this case), sometimes the
@@ -140,12 +146,12 @@ subreddit = reddit.subreddit(SUBREDDIT)
 # value is 5 seconds by default and is not exposed, so we have to
 # create an `httpx.Client` instance with the desired timeout and pass
 # it to `atproto.Client`.
-request = Request()
-request._client = httpx.Client(  # noqa: SLF001
+_request = Request()
+_request._client = httpx.Client(  # noqa: SLF001
     follow_redirects=True,
     timeout=HTTPX_CLIENT_TIMEOUT,
 )
-bsky_client = Client(request=request)
+bsky_client = Client(request=_request)
 live = Live("", auto_refresh=False, transient=True)
 prev_status = ""
 prev_sub_status = ""
@@ -435,7 +441,9 @@ def main(recent: list[Submission]) -> None:
 def run() -> None:
     """Entry function for the bot."""
     prepare_logger()
-    live.console.rule("[deep_sky_blue3]Skycast", style="deep_sky_blue3")
+    live.console.rule(
+        f"[deep_sky_blue3]{bot_name.title()} v{version}", style="deep_sky_blue3"
+    )
     live.start()
     try:
         if bsky_login() and (recent := recent_submissions()) is not None:

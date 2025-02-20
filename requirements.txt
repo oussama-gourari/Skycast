@@ -1,6 +1,0 @@
-praw
-atproto
-tenacity
-Pillow
-rich
-humanize

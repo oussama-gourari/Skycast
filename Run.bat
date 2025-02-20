@@ -1,4 +1,4 @@
 @echo off
 cls
-py skycast.py
+uv run skycast.py
 pause

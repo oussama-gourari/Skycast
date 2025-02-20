@@ -6,23 +6,19 @@ Skycast is a bot that automatically shares podcast posts from [r/PodcastSharing]
 
 ## ⚙️ Setup & Configuration
 
-### 1️⃣ Install Python
-- Download and install the latest version of [Python](https://www.python.org/).
-- **Important**: Check the box that says *"Add Python X.X to PATH"* (located at the bottom of the first installation screen).
+### 1️⃣ Install uv
+- Install the latest version of [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-### 2️⃣ Get the Bot Files
-- [Download the bot's files](https://github.com/oussama-gourari/Skycast/archive/refs/heads/main.zip).
-- Extract the files to a folder and open it.
-
-### 3️⃣ Install Requirements
-- Run **`Install Requirements.bat`** to install the necessary Python packages.
-
-### 4️⃣ Create a Reddit Script App
+### 2️⃣ Create a Reddit Script App
 - Go to [Reddit Apps](https://www.reddit.com/prefs/apps) and create a **script app** for the bot's account.
 - You will receive a **Client ID** and **Client Secret**.  
   📌 [Example](https://imgur.com/QNzBmkN)
 
-### 5️⃣ Configure `config.py`
+### 3️⃣ Get the Bot Files
+- [Download the bot's files](https://github.com/oussama-gourari/Skycast/archive/refs/heads/main.zip).
+- Extract the files to a folder and open it.
+
+### 4️⃣ Configure Skycast
 - Open `config.py` using a text editor and fill in the required credentials and details (don't forget to save):
    - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 4.
    - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Username and password of bot's Reddit account.
@@ -36,7 +32,7 @@ Skycast is a bot that automatically shares podcast posts from [r/PodcastSharing]
    - `SEPARATOR`: Used to separate the text from the hashtags on the Bluesky post, it is set to 2 line breaks (`\n`).
    - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, the bot will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that the bot saves on his Reddit account the posts he already shared, this is to prevent sharing the same post again if the bot is restarted.
 
-### 6️⃣ Run the Bot
+### 5️⃣ Run the Bot
 - Double-click **`Run.bat`** to start the bot. 🎉
 
 ---
