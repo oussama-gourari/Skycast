@@ -24,7 +24,7 @@ Skycast is a bot that automatically shares podcast posts from [r/PodcastSharing]
    - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account's handle and password.
    - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting the bot.
    - `SUBREDDIT`: Subreddit name (without the prefix r/) where the bot will operate.
-	 - `TITLE_REGEX`: Regular expression checked against each post's title to decide if it should be shared or not.
+   - `TITLE_REGEX`: Regular expression checked against each post's title to decide if it should be shared or not.
    - `BSKY_POST_TEXT_TEMPLATE`: The template used to generate the text of each Bluesky post.
       - The variable `post`, followed by a period (`.`) and an attribute name, all enclosed in curly braces (`{}`), can be used to include various details about the Reddit post being shared. For example, `{post.title}` will be replaced with the Reddit post's title, and `{post.link_flair_text}` will be replaced with the Reddit post’s flair.
       - To see the available attribute names, append `.json` to the end of any Reddit post URL (e.g., https://www.reddit.com/r/PodcastSharing/comments/1ij1ck2/the_s1e1_podcast_episode_200_the_office/.json).
