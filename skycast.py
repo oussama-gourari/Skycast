@@ -22,6 +22,7 @@ import httpx
 import praw  # type: ignore[import-untyped]
 import requests  # type: ignore[import-untyped]
 from atproto import Client, client_utils  # type: ignore[import-untyped]
+from atproto.exceptions import InvokeTimeoutError, NetworkError
 from atproto_client.models.app.bsky.embed.external import (  # type: ignore[import-untyped]
     External,
     Main,
@@ -43,6 +44,13 @@ from prawcore.exceptions import (  # type: ignore[import-untyped]
     TooManyRequests,
 )
 from prawcore.sessions import Session  # type: ignore[import-untyped]
+from requests.exceptions import (  # type: ignore[import-untyped]
+    ConnectionError as RequestsConnectionError,
+)
+from requests.exceptions import (
+    ConnectTimeout,
+    ReadTimeout,
+)
 from rich.live import Live
 from tenacity import RetryCallState, retry
 from tenacity.wait import wait_exponential
@@ -60,12 +68,11 @@ from config import (
     REDDIT_USERNAME,
     SEPARATOR,
     SUBREDDIT,
+    TITLE_REGEX,
 )
 
 # General constants.
 LOG_LEVEL = "DEBUG"
-# Only submissions which fulfill this regex are processed.
-TITLE_RULE = re.compile(r"^\[.+?\]")
 
 # Bluesky constants.
 BSKY_POST_URL = "https://bsky.app/profile/{handle}/post/{post_id}"
@@ -81,15 +88,8 @@ SLEEP_BEFORE_RETRY_MULTIPLIER = 5
 MAX_SLEEP_BEFORE_RETRY = 300  # Seconds.
 
 # Exceptions constants.
-REQUESTS_EXCEPTIONS = (
-    requests.exceptions.ConnectionError,
-    requests.exceptions.ConnectTimeout,
-    requests.exceptions.ReadTimeout,
-)
-ATPROTO_EXCEPTIONS = (
-    atproto.exceptions.NetworkError,
-    atproto.exceptions.InvokeTimeoutError,
-)
+REQUESTS_EXCEPTIONS = (RequestsConnectionError, ConnectTimeout, ReadTimeout)
+ATPROTO_EXCEPTIONS = (NetworkError, InvokeTimeoutError)
 PRAWCORE_EXCEPTIONS = (
     BadJSON,
     RequestException,
@@ -105,11 +105,11 @@ OTHER_PRAWCORE_EXCEPTIONS = (
 )
 RETRY_EXCEPTIONS = PRAWCORE_EXCEPTIONS + REQUESTS_EXCEPTIONS + ATPROTO_EXCEPTIONS
 EXCEPTIONS_DESCRIPTIONS = {
-    requests.exceptions.ConnectionError: "Network connection is unavailable",
-    requests.exceptions.ConnectTimeout: "Network timeout occurred",
-    requests.exceptions.ReadTimeout: "Network timeout occurred",
-    atproto.exceptions.NetworkError: "Network connection is unavailable",
-    atproto.exceptions.InvokeTimeoutError: "Network timeout occurred",
+    RequestsConnectionError: "Network connection is unavailable",
+    ConnectTimeout: "Network timeout occurred",
+    ReadTimeout: "Network timeout occurred",
+    NetworkError: "Network connection is unavailable",
+    InvokeTimeoutError: "Network timeout occurred",
     ResponseException: (
         "Reddit authentication error: wrong client ID and/or client secret"
     ),
@@ -284,7 +284,7 @@ def recent_submissions() -> list[Submission] | None:
         return list(subreddit.new(limit=100))
     except OTHER_PRAWCORE_EXCEPTIONS as exception:
         log.error("%s: %s", exception.__class__.__name__, exception)
-        if (type(exception) == ResponseException
+        if (type(exception) is ResponseException
                 and exception.response.status_code != HTTPStatus.UNAUTHORIZED):
             raise
         exception_description = EXCEPTIONS_DESCRIPTIONS[exception.__class__]
@@ -393,7 +393,7 @@ def verify_submission(
     recent: list[Submission],
 ) -> tuple[bool, str | None]:
     """Verify if `submission` should be skipped or not."""
-    invalid_title = TITLE_RULE.search(submission.title) is None
+    invalid_title = re.search(TITLE_REGEX, submission.title) is None
     catchup = recent[:max(0, CATCHUP_LIMIT)]
     past_catchup = submission in recent and submission not in catchup
     to_skip = True
@@ -442,7 +442,7 @@ def run() -> None:
     """Entry function for the bot."""
     prepare_logger()
     live.console.rule(
-        f"[deep_sky_blue3]{bot_name.title()} v{version}", style="deep_sky_blue3"
+        f"[deep_sky_blue3]{bot_name.title()} v{version}", style="deep_sky_blue3",
     )
     live.start()
     try:

@@ -13,6 +13,7 @@ BSKY_PASSWORD = ""
 # Settings.
 BOT_HOSTER = ""
 SUBREDDIT = "PodcastSharing"
+TITLE_REGEX = r"^\[.+?\]"
 BSKY_POST_TEXT_TEMPLATE = "({post.link_flair_text}) {post.title}"
 HASHTAGS = [
     "ShareAPodcast",

@@ -20,3 +20,6 @@ dependencies = [
 
 [project.urls]
 Repository = "https://github.com/oussama-gourari/Skycast"
+
+[tool.ruff]
+target-version = "py313"
