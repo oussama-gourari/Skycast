@@ -18,7 +18,7 @@ Skycast is a bot that automatically shares podcast posts from [r/PodcastSharing]
 - Extract the files to a folder and open it.
 
 ### 4️⃣ Configure Skycast
-- Rename `config.example.py` to `config.py` then open it using a text editor and fill in the required credentials and details (don't forget to save):
+- Rename `config_template.py` to `config.py` then open it using a text editor and fill in the required credentials and details (don't forget to save):
    - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 2.
    - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Username and password of bot's Reddit account.
    - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account's handle and password.
