@@ -314,7 +314,8 @@ def extract_info(submission_url: str) -> tuple:
         blob,
         extract_data["title"],
         extract_data["description"],
-        extract_data["url"],
+        final_url,
+        # extract_data["url"],
     )
 
 
