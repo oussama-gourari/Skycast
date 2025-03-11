@@ -61,6 +61,7 @@ from config import (
     BSKY_PASSWORD,
     BSKY_POST_TEXT_TEMPLATE,
     CATCHUP_LIMIT,
+    CHECK_EVERY,
     CLIENT_ID,
     CLIENT_SECRET,
     HASHTAGS,
@@ -420,7 +421,13 @@ def verify_submission(
 
 def main(recent: list[Submission]) -> None:
     """Continuously fetch submissions and process them."""
-    for new_post in subreddit.stream.submissions():
+    for new_post in subreddit.stream.submissions(pause_after=0):
+        if new_post is None:
+            sleep = CHECK_EVERY * 60
+            update_status(f"Waiting for {precisedelta(int(sleep))} before checking for new posts")
+            time.sleep(sleep)
+            update_status("Checking for new posts")
+            continue
         submission_url = reddit_full_url(new_post.permalink)
         short_url = reddit_short_url(new_post)
         to_skip, reason = verify_submission(new_post, recent)
@@ -436,7 +443,7 @@ def main(recent: list[Submission]) -> None:
         log.info("Saving processed post")
         update_status(sub_status="saving post to Reddit")
         new_post.save()
-        update_status("Waiting for new posts")
+        update_status("Checking for new posts")
 
 
 def run() -> None:

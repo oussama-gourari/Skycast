@@ -21,3 +21,4 @@ HASHTAGS = [
 ]
 SEPARATOR = "\n\n"
 CATCHUP_LIMIT = 0
+CHECK_EVERY = 30  # Minutes.
