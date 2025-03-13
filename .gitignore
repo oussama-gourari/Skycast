@@ -9,6 +9,6 @@ wheels/
 # Virtual environments
 .venv
 
+scripts/delete.py
 config.py
-delete.py
 log.log
