@@ -203,8 +203,10 @@ def get_request(url: str) -> requests.Response:
 
 def prepare_logger() -> None:
     """Set the handler, formatter, and level for `log`."""
+    LOGS_DIR = ROOT_DIR / "logs"
+    LOGS_DIR.mkdir(exist_ok=True)
     handler = logging.FileHandler(
-        filename=ROOT_DIR / "logs/log.log",
+        filename=LOGS_DIR / "log.log",
         mode="w",
         encoding="utf-8",
     )
