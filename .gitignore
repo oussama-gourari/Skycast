@@ -12,3 +12,4 @@ wheels/
 delete.py
 config.py
 log.log
+log_vm.log
