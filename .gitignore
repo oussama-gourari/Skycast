@@ -9,7 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
-delete.py
-config.py
-log.log
-log_vm.log
+src/__pycache__/
+src/config.py
+src/delete.py
+logs/
