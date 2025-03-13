@@ -183,14 +183,12 @@ def on_network_exception(retry_state: RetryCallState) -> None:
     sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
     exception_description += f", retrying after {sleep_amount}"
     console_log(exception_description, is_error=True)
-    while retry_state.upcoming_sleep > 0:
-        sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
-        update_status(
-            f"Sleeping for {sleep_amount} before attempting to resume",
-            cache=False,
-        )
-        time.sleep(min(1, retry_state.upcoming_sleep))
-        retry_state.upcoming_sleep -= 1
+    wait(
+        total_time=retry_state.upcoming_sleep,
+        status="Waiting for {} before attempting to resume",
+        freq=1,
+    )
+    retry_state.upcoming_sleep = 0
     update_status(prev_status, prev_sub_status)
 
 
@@ -419,13 +417,28 @@ def verify_submission(
     return to_skip, reason
 
 
+def wait(*, total_time: float, status: str, freq: int = 1) -> None:
+    """Sleep for `total_time`.
+
+    while sleeping, update the status each `freq` seconds on how much
+    sleep time is left.
+    """
+    while total_time > 0:
+        humanized = precisedelta(int(total_time))
+        update_status(status.format(humanized), cache=False)
+        time.sleep(min(freq, total_time))
+        total_time -= freq
+
+
 def main(recent: list[Submission]) -> None:
     """Continuously fetch submissions and process them."""
     for new_post in subreddit.stream.submissions(pause_after=0):
         if new_post is None:
-            sleep = CHECK_EVERY * 60
-            update_status(f"Waiting for {precisedelta(int(sleep))} before checking for new posts")
-            time.sleep(sleep)
+            wait(
+                total_time=CHECK_EVERY * 60,
+                status="Waiting for {} before checking for new posts",
+                freq=60,
+            )
             update_status("Checking for new posts")
             continue
         submission_url = reddit_full_url(new_post.permalink)
