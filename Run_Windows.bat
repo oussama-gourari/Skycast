@@ -8,7 +8,7 @@ IF %ERRORLEVEL% NEQ 0 (
 CLS
 
 TITLE Skycast
-uv run --no-progress --with prawcore^>=3.0.1 src/skycast.py
+uv run --quiet --with prawcore^>=3.0.1 src/skycast.py
 
 ENDLOCAL
 PAUSE
