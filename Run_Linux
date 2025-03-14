@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+which uv
+if [[ $? -ne 0 ]]; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+clear
+uv run --with "prawcore>=3.0.1" src/skycast.py
