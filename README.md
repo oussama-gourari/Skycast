@@ -20,7 +20,7 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
 
 ### 3️⃣ Configure Skycast
 
-- Inside the **`src`** folder, rename the file ![**config_template.py**](/src/config_template.py) to **`config.py`**.
+- Inside the **`src`** folder, rename the file **![config_template.py](/src/config_template.py)** to **`config.py`**.
 
 - Open it using a text editor and fill in the required credentials and details as follows:
   
@@ -45,7 +45,7 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
   
   - `SEPARATOR`: Used to separate the text from the hashtags on the Bluesky post, it is set to 2 line breaks (`\n`).
   
-  - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, the bot will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that the bot saves on his Reddit account the posts he already shared, this is to prevent sharing the same post again if the bot is restarted.
+  - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, the bot will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that the bot saves on its Reddit account the posts it has already shared, this is to prevent sharing the same post again if the bot is restarted.
   
   - `CHECK_EVERY`: The number of minutes the bot waits before checking for new posts again if no new posts were found in the last check. This helps reduce workload and cost, especially when running the bot on cloud services like Google Cloud.
 
@@ -59,11 +59,11 @@ The following steps are for running Skycast either locally on your machine, or o
 
 *Running Skycast for the first time might take some time to load.*
 
-- On Windows, double-click ![**Run_Windows.bat**](/Run_Windows.bat) to start the bot.
+- On Windows, double-click **![Run_Windows.bat](/Run_Windows.bat)** to start the bot.
 
 - On Linux, open the terminal in the root directory of the bot's files and execute the following command: `bash Run_Linux`.
 
-If Skycast stops due to an error, a `log.log` file will be available under the `logs` directory.
+If Skycast stops due to an error, a **`log.log`** file will be available under the **`logs`** directory.
 
 ### ☁️ Google Cloud Compute Engine Debian VM
 
@@ -75,15 +75,15 @@ If Skycast stops due to an error, a `log.log` file will be available under the `
   
   ![](https://i.imgur.com/130YL0a.png)
 
-- Under Resources, click Compute Engine, then click Create Instance then Enable the Compute Engine API if not already enabled.
+- Under *Resources*, click *Compute Engine*, then click *Create Instance* then *Enable the Compute Engine API* if not already enabled.
 
 - Before proceeding with the VM configuration, we need to create an SSH key pair to be able to communicate with the VM from your local machine. On Windows 10 or later, open the Command Prompt and type the following command, replace `WINDOWS_USER` with your username on the Windows machine, `SSH_KEY_FILENAME` and `VM_USERNAME` are of your choice *(don't use space in them)*:
   
   ``ssh-keygen -t rsa -f C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME -C VM_USERNAME``
   
-  Once you run the above command, you will be asked to enter a passphrase, I would suggest leaving it empty ***as long as you are on your personnal machine and no one else has access to it***, this is to avoid entering the passphrase each time you try to connect to the VM.
+  Once you run the above command, you will be asked to enter a passphrase. I would suggest leaving it empty ***as long as you are on your personnal machine and no one else has access to it***, this is to avoid entering the passphrase each time you try to connect to the VM.
   
-  2 files will be generated, a private key file `C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME` which acts like a password and ***should not be shared with anyone***, and a public key file `C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME.pub`. Open the public key file using a text editor, it's *entire content* is the public key **required** in the next steps.
+  2 files will be generated, a private key file **`C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME`** which acts like a password and ***should not be shared with anyone***, and a public key file **`C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME.pub`**. Open the public key file using a text editor, it's *entire content* is the public key **required** in the next steps.
   
   In the below example screenshot, `WINDOWS_USER` is *Utilisateur*, `SSH_KEY_FILENAME` is *skycast_vm*, and `VM_USERNAME` is *my-vm-username*.
   
@@ -115,11 +115,11 @@ If Skycast stops due to an error, a `log.log` file will be available under the `
   
   ![](https://i.imgur.com/5PQu2jp.png)
 
-- Using a text editor, open the file [**Run_Google_Cloud_Debian_VM.bat**](/Run_Google_Cloud_Debian_VM.bat) and put in `SSH_KEY_FILENAME`, `VM_USERNAME`, and `VM_External_IP` as shown in the example screenshot below. Save and exit the file.
+- Using a text editor, open the file **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)** and put in `SSH_KEY_FILENAME`, `VM_USERNAME`, and `VM_External_IP` as shown in the example screenshot below. Save and exit the file.
   
   ![](https://i.imgur.com/z56Jq7f.png)
 
-- To start Skycast on the VM, double-click [**Run_Google_Cloud_Debian_VM.bat**](/Run_Google_Cloud_Debian_VM.bat). Each time you will be asked if you want to update Skycast on the VM, unless you want to in the future, leave it empty, which will default to `N` *(No)* then press Enter.
+- To start Skycast on the VM, double-click **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)**. Each time you will be asked if you want to update Skycast on the VM, unless you want to in the future, leave it empty, which will default to `N` *(No)* then press Enter.
   
   Since it's the first time, you will be asked `Are you sure you want to continue connecting (yes/no/[fingerprint])?`, type `yes` then press Enter. The script will install the necessary tools on the VM, whenever you are asked `Do you want to continue? [Y/n]` type `Y` then press Enter.
   
@@ -127,11 +127,11 @@ If Skycast stops due to an error, a `log.log` file will be available under the `
   
   ![](https://i.imgur.com/F4LzADs.png)
   
-  The window can be closed and Skycast will still be running on the cloud VM. If later you want to stop Skycast or check on it, simply double-click [**Run_Google_Cloud_Debian_VM.bat**](/Run_Google_Cloud_Debian_VM.bat) again.
+  The window can be closed and Skycast will still be running on the cloud VM. If later you want to stop Skycast or check on it, simply double-click **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)** again.
   
   ***If you make changes to the `config.py` file, Skycast must be stopped then started again for the changes to take effect.***
 
-- If Skycast stops due to an error, type `exit` then press Enter, a log file will be downloaded from the VM and will be available under the `logs` directory as `log_vm.log`.
+- If Skycast stops due to an error, type `exit` then press Enter, a log file will be downloaded from the VM and will be available under the **`logs`** directory as **`log_vm.log`**.
   
   ![](https://i.imgur.com/Eo77600.png)
 
