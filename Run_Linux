@@ -3,7 +3,6 @@
 which uv
 if [[ $? -ne 0 ]]; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    source ~/.bashrc
 fi
 clear
-uv run --quiet --with "prawcore>=3.0.1" src/skycast.py
+~/.local/bin/uv run --quiet --with "prawcore>=3.0.1" src/skycast.py
