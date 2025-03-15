@@ -25,15 +25,15 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
 
 - Open it using a text editor and fill in the required credentials and details as follows:
   
-  - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 1.
+  - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 1️⃣.
   
   - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Username and password of Skycast's Reddit account.
   
   - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account's handle and password.
   
-  - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting Skycast.
+  - `BOT_HOSTER`: Reddit username *(without the prefix u/)* of the person running Skycast.
   
-  - `SUBREDDIT`: Subreddit name (without the prefix r/) where Skycast will operate.
+  - `SUBREDDIT`: Subreddit name *(without the prefix r/)* where Skycast will operate.
   
   - `TITLE_REGEX`: Regular expression checked against each post's title to decide if it should be shared or not.
   
@@ -46,7 +46,7 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
   
   - `SEPARATOR`: Used to separate the text from the hashtags on the Bluesky post, it is set to 2 line breaks (`\n`).
   
-  - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, Skycast will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that Skycast saves on its Reddit account the posts it has already shared, this is to prevent sharing the same post again if Skycast is restarted.
+  - `CATCHUP_LIMIT`: Number of most-recent posts to start from *(max=100)*. For example, if set to 5, Skycast will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that Skycast saves on its Reddit account the posts it has already shared, this is to prevent sharing the same post again if Skycast is restarted.
   
   - `CHECK_EVERY`: The number of minutes Skycast waits before checking for new posts again if no new posts were found in the last check. This helps reduce workload and cost, especially when running Skycast on cloud services like Google Cloud.
 
