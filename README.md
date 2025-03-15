@@ -8,15 +8,16 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
 
 ### 1️⃣ Create a Reddit Script App
 
-- On the bot's Reddit account, go to [Reddit Apps](https://www.reddit.com/prefs/apps) and create a **script app**.
+- Create a Reddit account for Skycast.
+- On the created Reddit account, go to [Reddit Apps](https://www.reddit.com/prefs/apps) and create a **script app**.
   ![https://imgur.com/g3kglxH](https://i.imgur.com/g3kglxH.png)
 - You will receive a **Client ID** and **Client Secret**.
   ![https://imgur.com/a2DRzC5](https://i.imgur.com/a2DRzC5.png)
 
-### 2️⃣ Download Skycast
+### 2️⃣ Get Skycast
 
-- [Download the bot's files](https://github.com/oussama-gourari/Skycast/archive/refs/heads/main.zip).
-- Extract the files to a folder and open it.
+- [Download Skycast](https://github.com/oussama-gourari/Skycast/archive/refs/heads/main.zip).
+- Extract the downloaded **`.zip`** file to a folder then open that folder.
 
 ### 3️⃣ Configure Skycast
 
@@ -26,13 +27,13 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
   
   - `CLIENT_ID` and `CLIENT_SECRET`: obtained in step 1.
   
-  - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Username and password of bot's Reddit account.
+  - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Username and password of Skycast's Reddit account.
   
   - `BSKY_HANDLE` and `BSKY_PASSWORD`: Bluesky account's handle and password.
   
-  - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting the bot.
+  - `BOT_HOSTER`: Reddit username (without the prefix u/) of the person hosting Skycast.
   
-  - `SUBREDDIT`: Subreddit name (without the prefix r/) where the bot will operate.
+  - `SUBREDDIT`: Subreddit name (without the prefix r/) where Skycast will operate.
   
   - `TITLE_REGEX`: Regular expression checked against each post's title to decide if it should be shared or not.
   
@@ -45,21 +46,21 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
   
   - `SEPARATOR`: Used to separate the text from the hashtags on the Bluesky post, it is set to 2 line breaks (`\n`).
   
-  - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, the bot will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that the bot saves on its Reddit account the posts it has already shared, this is to prevent sharing the same post again if the bot is restarted.
+  - `CATCHUP_LIMIT`: Number of most-recent posts to start from (max=100). For example, if set to 5, Skycast will start sharing to Bluesky starting from the 5 most-recent posts on the subreddit, set it to 0 if you want to share new posts only. Keep in mind that Skycast saves on its Reddit account the posts it has already shared, this is to prevent sharing the same post again if Skycast is restarted.
   
-  - `CHECK_EVERY`: The number of minutes the bot waits before checking for new posts again if no new posts were found in the last check. This helps reduce workload and cost, especially when running the bot on cloud services like Google Cloud.
+  - `CHECK_EVERY`: The number of minutes Skycast waits before checking for new posts again if no new posts were found in the last check. This helps reduce workload and cost, especially when running Skycast on cloud services like Google Cloud.
 
 - Save then exit the file.
 
 ## 🤖 Run Skycast
 
-The following steps are for running Skycast either locally on your machine, or on a Google Cloud Compute Engine Debian VM:
+The following steps are for running Skycast either locally on your machine, or on a Google Cloud Compute Engine Debian Virtual Machine (VM):
 
 ### 🖥️ Locally
 
 *Running Skycast for the first time might take some time to load.*
 
-- On Windows, double-click **![Run_Windows.bat](/Run_Windows.bat)** to start the bot.
+- On Windows, double-click **![Run_Windows.bat](/Run_Windows.bat)** to start Skycast.
 
 - On Linux, open the terminal in the root directory of the bot's files and execute the following command: `bash Run_Linux`.
 
@@ -75,7 +76,7 @@ If Skycast stops due to an error, a **`log.log`** file will be available under t
   
   ![](https://i.imgur.com/130YL0a.png)
 
-- Under *Resources*, click *Compute Engine*, then click *Create Instance* then *Enable the Compute Engine API* if not already enabled.
+- Under *Resources*, click *Compute Engine*, then click *Create Instance* (if this is your first time using Google Cloud you will be asked to Create a billing account), then *Enable the Compute Engine API* if not already enabled.
 
 - Before proceeding with the VM configuration, we need to create an SSH key pair to be able to communicate with the VM from your local machine. On Windows 10 or later, open the Command Prompt and type the following command, replace `WINDOWS_USER` with your username on the Windows machine, `SSH_KEY_FILENAME` and `VM_USERNAME` are of your choice *(don't use space in them)*:
   
