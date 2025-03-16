@@ -64,7 +64,7 @@ The following steps are for running Skycast either locally on your machine, or o
 
 - On Linux, open the terminal in the root directory of the bot's files and execute the following command: `bash Run_Linux`.
 
-If Skycast stops due to an error, a **`log.log`** file will be available under the **`logs`** directory.
+While running, Skycast creates a **`log.log`** file under the **`logs`** directory, useful in case it stops due to an error.
 
 ### ☁️ Google Cloud Compute Engine Debian VM
 
@@ -72,23 +72,30 @@ If Skycast stops due to an error, a **`log.log`** file will be available under t
   
   ![](https://i.imgur.com/pVWSjHj.png)
 
-- From the notifications menu, select the newly created project.
+- From the Notifications menu, select the newly created project.
   
   ![](https://i.imgur.com/130YL0a.png)
 
 - Under *Resources*, click *Compute Engine*, then click *Create Instance* (if this is your first time using Google Cloud you will be asked to Create a billing account), then *Enable the Compute Engine API* if not already enabled.
 
-- Before proceeding with the VM configuration, we need to create an SSH key pair to be able to communicate with the VM from your local machine. On Windows 10 or later, open the Command Prompt and type the following command, replace `WINDOWS_USER` with your username on the Windows machine, `SSH_KEY_FILENAME` and `VM_USERNAME` are of your choice *(don't use space in them)*:
+- Before proceeding with the VM configuration, we need to create an SSH key pair to be able to communicate with the VM from your local machine. On Windows 10 or later, open the Command Prompt and type the following command, replace `SSH_KEY_FILENAME` and `VM_USERNAME` with names of your choice *(don't use space in them)*:
   
-  ``ssh-keygen -t rsa -f C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME -C VM_USERNAME``
+  ``ssh-keygen -t rsa -f %USERPROFILE%\.ssh\SSH_KEY_FILENAME -C VM_USERNAME``
   
   Once you run the above command, you will be asked to enter a passphrase. I would suggest leaving it empty ***as long as you are on your personnal machine and no one else has access to it***, this is to avoid entering the passphrase each time you try to connect to the VM.
   
-  2 files will be generated, a private key file **`C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME`** which acts like a password and ***should not be shared with anyone***, and a public key file **`C:\Users\WINDOWS_USER\.ssh\SSH_KEY_FILENAME.pub`**. Open the public key file using a text editor, it's *entire content* is the public key **required** in the next steps.
+  2 files will be generated, a private (identification) key file, which acts like a password and ***should not be shared with anyone***, and a public key file.
   
-  In the below example screenshot, `WINDOWS_USER` is *Utilisateur*, `SSH_KEY_FILENAME` is *skycast_vm*, and `VM_USERNAME` is *my-vm-username*.
+  In the below example screenshot:
   
-  ![](https://i.imgur.com/NdmLdSV.png)
+    - `SSH_KEY_FILENAME` is *skycast_vm*.
+    - `VM_USERNAME` is *my-vm-username*.
+    - Privete key file is **`C:\Users\Utilisateur\.ssh\skycast_vm`**.
+    - Public key file is **`C:\Users\Utilisateur\.ssh\skycast_vm.pub`**.
+  
+  ![](https://i.imgur.com/z6vRxvj.png)
+  
+  Open the public key file using a text editor, it's *entire content* is the public key **required** in the next steps.
 
 - The following VM configuration steps are meant to create a VM with minimal resources in order to reduce it's cost:
   

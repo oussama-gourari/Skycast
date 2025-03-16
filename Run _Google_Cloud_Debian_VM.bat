@@ -15,6 +15,9 @@ set UPDATE_SKYCAST=0
 set /P UPDATE=Do you want to update Skycast on the VM? (Y/N, default is N): 
 IF /I "%UPDATE%" EQU "Y" (
     set UPDATE_SKYCAST=1
+    echo Updating Skycast from the GitHub repository.
+) ELSE (
+    echo Skipping updating Skycast.
 )
 
 ssh -i "%FILE_PATH%" %USER_AT_HOST% -t "which tmux; if [ $? -ne 0 ]; then sudo apt install tmux; fi; which git; if [ $? -ne 0 ]; then sudo apt install git; fi; if [ %UPDATE_SKYCAST% -eq 1 ]; then rm -rf Skycast; fi; git clone https://github.com/oussama-gourari/Skycast.git"
