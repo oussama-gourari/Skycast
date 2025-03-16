@@ -90,7 +90,7 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
   
     - `SSH_KEY_FILENAME` is *skycast_vm*.
     - `VM_USERNAME` is *my-vm-username*.
-    - Privete key file is **`C:\Users\Utilisateur\.ssh\skycast_vm`**.
+    - Private key file is **`C:\Users\Utilisateur\.ssh\skycast_vm`**.
     - Public key file is **`C:\Users\Utilisateur\.ssh\skycast_vm.pub`**.
   
   ![](https://i.imgur.com/z6vRxvj.png)
