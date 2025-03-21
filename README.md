@@ -64,7 +64,7 @@ The following steps are for running Skycast either locally on your machine, or o
 
 - On Linux, open the terminal in the root directory of the bot's files and execute the following command: `bash Run_Linux`.
 
-While running, Skycast creates a **`log.log`** file under the **`logs`** directory, useful in case it stops due to an error.
+While running, Skycast creates a **`log.log`** file under the **`logs`** directory, containing debugging and error *(in case they occur)* messages.
 
 ### ☁️ Google Cloud Compute Engine Debian VM
 
@@ -99,7 +99,7 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
 
 - The following VM configuration steps are meant to create a VM with minimal resources in order to reduce it's cost:
   
-  - In the Navigation menu, click Machine configuration, select `E2` from the table and choose `e2-micro (2 vCPU, 1 core, 1 GB memory)` under Machine type.
+  - In the Navigation menu, click Machine configuration, select `E2` from the table, and choose `e2-micro (2 vCPU, 1 core, 1 GB memory)` under Machine type.
     
     ![](https://i.imgur.com/xwxBQGk.png)
   
@@ -123,13 +123,13 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
   
   ![](https://i.imgur.com/5PQu2jp.png)
 
-- Using a text editor, open the file **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)** and put in `SSH_KEY_FILENAME`, `VM_USERNAME`, and `VM_External_IP` as shown in the example screenshot below. Save and exit the file.
+- Using a text editor, open the file **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)** and put in `SSH_KEY_FILENAME`, `VM_USERNAME`, and `VM_EXTERNAL_IP` as shown in the example screenshot below. Save and exit the file.
   
   ![](https://i.imgur.com/z56Jq7f.png)
 
-- To start Skycast on the VM, double-click **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)**. Each time you will be asked if you want to update Skycast on the VM, unless you want to in the future, leave it empty, which will default to `N` *(No)* then press Enter.
+- To start Skycast on the VM, double-click **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)**. Each time you run it, you will be prompted if you want to update Skycast, which is useful in the future if you want to update, leave it empty, which will default to `N` *(No)* then press Enter.
   
-  Since it's the first time, you will be asked `Are you sure you want to continue connecting (yes/no/[fingerprint])?`, type `yes` then press Enter. The script will install the necessary tools on the VM, whenever you are asked `Do you want to continue? [Y/n]` type `Y` then press Enter.
+  Since it's the first time, you will be asked `Are you sure you want to continue connecting (yes/no/[fingerprint])?`, type `yes` then press Enter. The script will install the necessary tools on the VM, so whenever you are asked `Do you want to continue? [Y/n]`, type `Y` then press Enter.
   
   Your `config.py` will be uploaded to the VM and Skycast should now be running 🚀 *(might take some time to load the first time)*.
   
