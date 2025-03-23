@@ -127,8 +127,8 @@ EXCEPTIONS_DESCRIPTIONS = {
 ROOT_DIR = Path(__file__).parent.parent
 with (ROOT_DIR / "pyproject.toml").open(mode="rb") as f:
     pyproject = tomllib.load(f)
-    bot_name = pyproject["project"]["name"]
-    version = pyproject["project"]["version"]
+    bot_name: str = pyproject["project"]["name"]
+    version: str = pyproject["project"]["version"]
 log = logging.getLogger(bot_name)
 reddit = praw.Reddit(
     client_id=CLIENT_ID,
@@ -176,9 +176,9 @@ def on_network_exception(retry_state: RetryCallState) -> None:
         original_exception = exception.original_exception
         if not isinstance(original_exception, REQUESTS_EXCEPTIONS):
             raise exception
-        exception_description = EXCEPTIONS_DESCRIPTIONS[original_exception.__class__]
+        exception_description: str = EXCEPTIONS_DESCRIPTIONS[original_exception.__class__]
     else:
-        exception_description = EXCEPTIONS_DESCRIPTIONS.get(
+        exception_description: str = EXCEPTIONS_DESCRIPTIONS.get(
             exception.__class__, "Reddit server error",
         )
     sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
