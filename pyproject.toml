@@ -23,3 +23,5 @@ Repository = "https://github.com/oussama-gourari/Skycast"
 
 [tool.ruff]
 target-version = "py313"
+line-length = 80
+extend-select = ["ALL"]

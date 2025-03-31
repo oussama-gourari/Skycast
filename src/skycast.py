@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Skycast.
 
 A bot that shares podcast posts from r/PodcastSharing to Bluesky.
@@ -27,7 +28,9 @@ from atproto_client.models.app.bsky.embed.external import (  # type: ignore[impo
     External,
     Main,
 )
-from atproto_client.models.blob_ref import BlobRef  # type: ignore[import-untyped]
+from atproto_client.models.blob_ref import (  # type: ignore[import-untyped]
+    BlobRef,
+)
 from atproto_client.request import Request  # type: ignore[import-untyped]
 from humanize import precisedelta
 from PIL import Image
@@ -104,7 +107,9 @@ OTHER_PRAWCORE_EXCEPTIONS = (
     Forbidden,
     NotFound,
 )
-RETRY_EXCEPTIONS = PRAWCORE_EXCEPTIONS + REQUESTS_EXCEPTIONS + ATPROTO_EXCEPTIONS
+RETRY_EXCEPTIONS = (
+    PRAWCORE_EXCEPTIONS + REQUESTS_EXCEPTIONS + ATPROTO_EXCEPTIONS,
+)
 EXCEPTIONS_DESCRIPTIONS = {
     RequestsConnectionError: "Network connection is unavailable",
     ConnectTimeout: "Network timeout occurred",
@@ -114,7 +119,9 @@ EXCEPTIONS_DESCRIPTIONS = {
     ResponseException: (
         "Reddit authentication error: wrong client ID and/or client secret"
     ),
-    OAuthException: "Reddit authentication error: wrong username and/or password",
+    OAuthException: (
+        "Reddit authentication error: wrong username and/or password"
+    ),
     Redirect: "The subreddit r/{subreddit} probably doesn't exist",
     Forbidden: (
         "The subreddit r/{subreddit} is probably set to private "
@@ -125,6 +132,7 @@ EXCEPTIONS_DESCRIPTIONS = {
 
 # Global variables.
 ROOT_DIR = Path(__file__).parent.parent
+LOGS_DIR = ROOT_DIR / "logs"
 with (ROOT_DIR / "pyproject.toml").open(mode="rb") as f:
     pyproject = tomllib.load(f)
     bot_name: str = pyproject["project"]["name"]
@@ -143,7 +151,8 @@ reddit = praw.Reddit(
 subreddit = reddit.subreddit(SUBREDDIT)
 # When uploading a blob (thumbnail image in this case), sometimes the
 # image data is large and if the network upload speed is slow, the
-# request will take a while and raise `atproto_client.exceptions.InvokeTimeoutError`.
+# request will take a while and raise
+# `atproto_client.exceptions.InvokeTimeoutError`.
 # The `atproto.Client` uses `httpx.Client` for requests and the timeout
 # value is 5 seconds by default and is not exposed, so we have to
 # create an `httpx.Client` instance with the desired timeout and pass
@@ -168,7 +177,7 @@ def should_retry_request(retry_state: RetryCallState) -> bool:
 
 
 def on_network_exception(retry_state: RetryCallState) -> None:
-    """Log and print network exceptions and sleep before retrying the request."""
+    """Log and print HTTP request exceptions and sleep before retrying them."""
     exception = retry_state.outcome.exception()  # type: ignore[union-attr]
     exception_name = exception.__class__.__name__
     log.error("%s: %s", exception_name, exception)
@@ -176,11 +185,12 @@ def on_network_exception(retry_state: RetryCallState) -> None:
         original_exception = exception.original_exception
         if not isinstance(original_exception, REQUESTS_EXCEPTIONS):
             raise exception
-        exception_description: str = EXCEPTIONS_DESCRIPTIONS[original_exception.__class__]
+        exception_cls = original_exception.__class__
     else:
-        exception_description: str = EXCEPTIONS_DESCRIPTIONS.get(
-            exception.__class__, "Reddit server error",
-        )
+        exception_cls = exception.__class__
+    exception_description = EXCEPTIONS_DESCRIPTIONS.get(
+        exception_cls, "Reddit server error",
+    )
     sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
     exception_description += f", retrying after {sleep_amount}"
     console_log(exception_description, is_error=True)
@@ -203,7 +213,6 @@ def get_request(url: str) -> requests.Response:
 
 def prepare_logger() -> None:
     """Set the handler, formatter, and level for `log`."""
-    LOGS_DIR = ROOT_DIR / "logs"
     LOGS_DIR.mkdir(exist_ok=True)
     handler = logging.FileHandler(
         filename=LOGS_DIR / "log.log",
@@ -298,7 +307,7 @@ def recent_submissions() -> list[Submission] | None:
 
 
 def extract_info(submission_url: str) -> tuple:
-    """Extract title, description, thumbnail image URL, and URI from a given `url`."""
+    """Extract title, description, thumbnail image URL from a given `url`."""
     final_url = submission_url
     if submission_url.startswith("/r/"):  # Crosspost
         final_url = reddit_full_url(submission_url)
@@ -317,7 +326,6 @@ def extract_info(submission_url: str) -> tuple:
         extract_data["title"],
         extract_data["description"],
         final_url,
-        # extract_data["url"],
     )
 
 
@@ -466,7 +474,8 @@ def run() -> None:
     """Entry function for the bot."""
     prepare_logger()
     live.console.rule(
-        f"[deep_sky_blue3]{bot_name.title()} v{version}", style="deep_sky_blue3",
+        title=f"[deep_sky_blue3]{bot_name.title()} v{version}",
+        style="deep_sky_blue3",
     )
     live.start()
     try:

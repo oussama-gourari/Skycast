@@ -62,7 +62,10 @@ The following steps are for running Skycast either locally on your machine, or o
 
 - On Windows, double-click **![Run_Windows.bat](/Run_Windows.bat)** to start Skycast.
 
-- On Linux, open the terminal in the root directory of the bot's files and execute the following command: `bash Run_Linux`.
+- On Linux, open the terminal in the root directory of the bot's files and execute the following command:
+  ```bash
+    bash Run_Linux
+  ```
 
 While running, Skycast creates a **`log.log`** file under the **`logs`** directory, containing debugging and error *(in case they occur)* messages.
 
@@ -80,7 +83,9 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
 
 - Before proceeding with the VM configuration, we need to create an SSH key pair to be able to communicate with the VM from your local machine. On Windows 10 or later, open the Command Prompt and type the following command, replace `SSH_KEY_FILENAME` and `VM_USERNAME` with names of your choice *(don't use space in them)*:
 
-  ``ssh-keygen -t rsa -f %USERPROFILE%\.ssh\SSH_KEY_FILENAME -C VM_USERNAME``
+  ```bat
+    ssh-keygen -t rsa -f %USERPROFILE%\.ssh\SSH_KEY_FILENAME -C VM_USERNAME
+  ```
 
   Once you run the above command, you will be asked to enter a passphrase. I would suggest leaving it empty ***as long as you are on your personnal machine and no one else has access to it***, this is to avoid entering the passphrase each time you try to connect to the VM.
 
