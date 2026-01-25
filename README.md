@@ -21,7 +21,7 @@ Skycast is a bot that shares podcast posts from [r/PodcastSharing](https://www.r
 
 ### 3️⃣ Configure Skycast
 
-- Inside the **`src`** folder, rename the file **![config_template.py](/src/config_template.py)** to **`config.py`**.
+- Inside the **`src`** folder, rename the file **[config_template.py](./src/config_template.py)** to **`config.py`**.
 
 - Open it using a text editor and fill in the required credentials and details as follows:
 
@@ -60,7 +60,7 @@ The following steps are for running Skycast either locally on your machine, or o
 
 *Running Skycast for the first time might take some time to load.*
 
-- On Windows, double-click **![Run_Windows.bat](/Run_Windows.bat)** to start Skycast.
+- On Windows, double-click **[Run_Windows.bat](./Run_Windows.bat)** to start Skycast.
 
 - On Linux, open the terminal in the root directory of the bot's files and execute the following command:
   ```bash
@@ -87,7 +87,7 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
     ssh-keygen -t rsa -f %USERPROFILE%\.ssh\SSH_KEY_FILENAME -C VM_USERNAME
   ```
 
-  Once you run the above command, you will be asked to enter a passphrase. I would suggest leaving it empty ***as long as you are on your personnal machine and no one else has access to it***, this is to avoid entering the passphrase each time you try to connect to the VM.
+  Once you run the above command, you will be asked to enter a passphrase. I would suggest leaving it empty ***as long as you are on your personal machine and no one else has access to it***, this is to avoid entering the passphrase each time you try to connect to the VM.
 
   2 files will be generated, a private (identification) key file, which acts like a password and ***should not be shared with anyone***, and a public key file.
 
@@ -100,9 +100,9 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
 
   ![](https://i.imgur.com/z6vRxvj.png)
 
-  Open the public key file using a text editor, it's *entire content* is the public key **required** in the next steps.
+  Open the public key file using a text editor, its *entire content* is the public key **required** in the next steps.
 
-- The following VM configuration steps are meant to create a VM with minimal resources in order to reduce it's cost:
+- The following VM configuration steps are meant to create a VM with minimal resources in order to reduce its cost:
 
   - In the Navigation menu, click Machine configuration, select `E2` from the table, and choose `e2-micro (2 vCPU, 1 core, 1 GB memory)` under Machine type.
 
@@ -132,11 +132,11 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
 
   ![](https://i.imgur.com/5PQu2jp.png)
 
-- Using a text editor, open the file **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)** and put in `SSH_KEY_FILENAME`, `VM_USERNAME`, and `VM_EXTERNAL_IP` as shown in the example screenshot below. Save and exit the file.
+- Using a text editor, open the file **[Run_Google_Cloud_Debian_VM.bat](./Run_Google_Cloud_Debian_VM.bat)** and put in `SSH_KEY_FILENAME`, `VM_USERNAME`, and `VM_EXTERNAL_IP` as shown in the example screenshot below. Save and exit the file.
 
   ![](https://i.imgur.com/z56Jq7f.png)
 
-- To start Skycast on the VM, double-click **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)**. Each time you run it, you will be prompted if you want to update Skycast, which is useful in the future if you want to update, leave it empty, which will default to `N` *(No)* then press Enter.
+- To start Skycast on the VM, double-click **[Run_Google_Cloud_Debian_VM.bat](./Run_Google_Cloud_Debian_VM.bat)**. Each time you run it, you will be prompted if you want to update Skycast, which is useful in the future if you want to update, leave it empty, which will default to `N` *(No)* then press Enter.
 
   Since it's the first time, you will be asked `Are you sure you want to continue connecting (yes/no/[fingerprint])?`, type `yes` then press Enter. The script will install the necessary tools on the VM, so whenever you are asked `Do you want to continue? [Y/n]`, type `Y` then press Enter.
 
@@ -144,7 +144,7 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
 
   ![](https://i.imgur.com/F4LzADs.png)
 
-  The window can be closed and Skycast will still be running on the cloud VM. If later you want to stop Skycast or check on it, simply double-click **![Run_Google_Cloud_Debian_VM.bat](/Run_Google_Cloud_Debian_VM.bat)** again.
+  The window can be closed and Skycast will still be running on the cloud VM. If later you want to stop Skycast or check on it, simply double-click **[Run_Google_Cloud_Debian_VM.bat](./Run_Google_Cloud_Debian_VM.bat)** again.
 
   ***If you make changes to the `config.py` file, Skycast must be stopped then started again for the changes to take effect.***
 
@@ -158,4 +158,4 @@ While running, Skycast creates a **`log.log`** file under the **`logs`** directo
 
 Skycast is provided under the [MIT License](https://github.com/oussama-gourari/Skycast/blob/main/LICENSE).
 
-&copy; 2025, Oussama Gourari.
+&copy; 2025-2026, Oussama Gourari.
