@@ -4,10 +4,11 @@
 A bot that shares podcast posts from r/PodcastSharing to Bluesky.
 
 Author: Oussama Gourari
-Copyright: Copyright (c) 2025 Oussama Gourari. All rights reserved.
+Copyright: Copyright (c) 2025-2026 Oussama Gourari. All rights reserved.
 License: MIT License.
 GitHub: https://github.com/oussama-gourari/Skycast
 """
+
 import logging
 import re
 import textwrap
@@ -17,25 +18,22 @@ from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
 from platform import platform, python_version
+from typing import TYPE_CHECKING
 
-import atproto.exceptions  # type: ignore[import-untyped]
+import atproto.exceptions
 import httpx
-import praw  # type: ignore[import-untyped]
-import requests  # type: ignore[import-untyped]
-from atproto import Client, client_utils  # type: ignore[import-untyped]
+import praw
+import requests
+from atproto import Client, client_utils
 from atproto.exceptions import InvokeTimeoutError, NetworkError
-from atproto_client.models.app.bsky.embed.external import (  # type: ignore[import-untyped]
+from atproto_client.models.app.bsky.embed.external import (
     External,
     Main,
 )
-from atproto_client.models.blob_ref import (  # type: ignore[import-untyped]
-    BlobRef,
-)
-from atproto_client.request import Request  # type: ignore[import-untyped]
+from atproto_client.request import Request
 from humanize import precisedelta
 from PIL import Image
-from praw.models import Submission  # type: ignore[import-untyped]
-from prawcore.exceptions import (  # type: ignore[import-untyped]
+from prawcore.exceptions import (
     BadJSON,
     Forbidden,
     NotFound,
@@ -46,8 +44,8 @@ from prawcore.exceptions import (  # type: ignore[import-untyped]
     ServerError,
     TooManyRequests,
 )
-from prawcore.sessions import Session  # type: ignore[import-untyped]
-from requests.exceptions import (  # type: ignore[import-untyped]
+from prawcore.sessions import Session
+from requests.exceptions import (
     ConnectionError as RequestsConnectionError,
 )
 from requests.exceptions import (
@@ -74,6 +72,12 @@ from config import (
     SUBREDDIT,
     TITLE_REGEX,
 )
+
+if TYPE_CHECKING:
+    from atproto_client.models.blob_ref import (
+        BlobRef,
+    )
+    from praw.models import Submission
 
 # General constants.
 LOG_LEVEL = "DEBUG"
@@ -189,7 +193,8 @@ def on_network_exception(retry_state: RetryCallState) -> None:
     else:
         exception_cls = exception.__class__
     exception_description = EXCEPTIONS_DESCRIPTIONS.get(
-        exception_cls, "Reddit server error",
+        exception_cls,
+        "Reddit server error",
     )
     sleep_amount = precisedelta(int(retry_state.upcoming_sleep))
     exception_description += f", retrying after {sleep_amount}"
@@ -273,7 +278,7 @@ def bsky_login() -> bool:
     log.debug("Logging in to Bluesky")
     update_status("Logging in to Bluesky")
     try:
-        return bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
+        bsky_client.login(BSKY_HANDLE, BSKY_PASSWORD)
     except atproto.exceptions.UnauthorizedError as exception:
         log.error(exception)
         console_log(
@@ -281,6 +286,8 @@ def bsky_login() -> bool:
             is_error=True,
         )
         return False
+    else:
+        return True
 
 
 def recent_submissions() -> list[Submission] | None:
@@ -295,8 +302,10 @@ def recent_submissions() -> list[Submission] | None:
         return list(subreddit.new(limit=100))
     except OTHER_PRAWCORE_EXCEPTIONS as exception:
         log.error("%s: %s", exception.__class__.__name__, exception)
-        if (type(exception) is ResponseException
-                and exception.response.status_code != HTTPStatus.UNAUTHORIZED):
+        if (
+            type(exception) is ResponseException
+            and exception.response.status_code != HTTPStatus.UNAUTHORIZED
+        ):
             raise
         exception_description = EXCEPTIONS_DESCRIPTIONS[exception.__class__]
         console_log(
@@ -355,13 +364,13 @@ def build_post_text(submission: Submission) -> client_utils.TextBuilder:
     text_builder = client_utils.TextBuilder()
     hashtags = [hashtag.format(post=submission) for hashtag in HASHTAGS]
     hashtags_length = (
-        len(" ".join(hashtags)) +
-        len(hashtags)  # For the # sign before each hashtag.
+        len(" ".join(hashtags))
+        + len(hashtags)  # For the # sign before each hashtag.
     )
     remaining_length = (
-        BSKY_POST_MAX_TEXT_LENGTH -
-        hashtags_length -
-        (len(SEPARATOR) if hashtags else 0)
+        BSKY_POST_MAX_TEXT_LENGTH
+        - hashtags_length
+        - (len(SEPARATOR) if hashtags else 0)
     )
     text = BSKY_POST_TEXT_TEMPLATE.format(post=submission)
     text = textwrap.shorten(text, width=remaining_length)
@@ -405,7 +414,7 @@ def verify_submission(
 ) -> tuple[bool, str | None]:
     """Verify if `submission` should be skipped or not."""
     invalid_title = re.search(TITLE_REGEX, submission.title) is None
-    catchup = recent[:max(0, CATCHUP_LIMIT)]
+    catchup = recent[: max(0, CATCHUP_LIMIT)]
     past_catchup = submission in recent and submission not in catchup
     to_skip = True
     reason = None
